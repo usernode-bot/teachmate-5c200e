@@ -1,27 +1,36 @@
 # TeachMate
 
-> **Starter template** — this repo was scaffolded by Homeroom Social
-> Vibecoding. Everything in it is placeholder example code until the
-> app's first real feature is built.
+AI lesson plans, quizzes and grading for K-12 teachers. A Homeroom app: the
+teacher enters a subject, grade, topic and class length and gets a complete
+lesson plan; writes quizzes with an answer key and rubric; photographs an
+answer sheet and gets suggested marks with feedback; and sees class score
+summaries. Everything can be exported as a PDF.
 
-The scaffold is a small working demo that proves the plumbing works:
+## How it works
 
-- **Sign-in** — the server verifies the platform-issued user token
-  (an RS256 JWT) on every request, so the app already knows who is
-  using it. No accounts to build.
-- **Database** — the app has its own private Postgres database, ready
-  to store things.
-- **Styling** — Tailwind CSS, precompiled by `npm run build` during
-  image creation with either Kubernetes/Paketo or standalone Docker, in a
-  light and a dark look that follow the viewer's Homeroom theme.
+- **Lessons tab** — write a lesson plan from subject, grade, class length and
+  topic. Saved plans list below, searchable. Each plan opens as a ruled
+  notebook sheet with the minutes for each activity in the margin.
+- **Quizzes tab** — write a quiz with multiple-choice and essay questions, an
+  answer key (correct choices circled in red) and a four-level rubric. A quiz
+  can be based on one of your lesson plans.
+- **Grade tab** — take or choose a photo of a student's answer sheet. AI reads
+  each answer, marks it against the key, places essays on the rubric and
+  writes feedback. The teacher checks every mark and saves. Entering answers
+  by hand is always available.
+- **Scores tab** — class summaries: average, range, each student's result, and
+  how many students got each question right.
 
-## Replacing the template
+## Under the hood
 
-To change this app, ask Homeroom bot: open the app on Homeroom, tap the
-Homeroom icon in the header, then **Suggest an improvement**, and describe
-the app you want in plain English. The template will be replaced with your
-real app. You can also run
-Claude Code against this repo directly; start with `CLAUDE.md`, which
-carries the app-specific notes and points at the platform rules.
-
-Once the real app exists, rewrite this README to describe it.
+- `server.js` — Express app: auth (iframe JWT), the API in `lib/routes.js`,
+  schema migration in `lib/db.js`, static serving.
+- `lib/` — `ai.js` (platform LLM proxy), `normalize.js` (validators that make
+  AI output safe to store), `scoring.js` (the one place scores are computed),
+  `outline.js` (blank outlines), `demo.js` (staging demo data).
+- `public/js/` — the frontend: hash-routed tabs, the notebook sheet
+  (`sheet.js`), one module per tab.
+- Plans, quizzes and scores live in private tables (`staging:private`), one
+  teacher per account. AI runs through the platform proxy; answer-sheet
+  photos upload through platform storage as private files.
+- `npm test` runs the unit tests; the proposal checks live in `dapp.json`.

@@ -56,6 +56,20 @@ module.exports = {
         danger: token('danger'),
         'on-danger': token('on-danger'),
         focus: token('focus'), // the keyboard focus ring
+        mark: token('mark'), // red pen: margin minutes, ticks, circled answers
+        paper: token('paper'), // the notebook sheet
+        rule: token('rule'), // the sheet's blue ruled lines
+        redline: token('redline'), // the sheet's red margin line
+        'on-subject': token('on-subject'), // icons and text on a subject colour
+        'subj-math': token('subj-math'),
+        'subj-ela': token('subj-ela'),
+        'subj-sci': token('subj-sci'),
+        'subj-soc': token('subj-soc'),
+        'subj-art': token('subj-art'),
+        'subj-other': token('subj-other'),
+      },
+      fontFamily: {
+        display: ['ui-rounded', '"SF Pro Rounded"', 'system-ui', 'sans-serif'],
       },
       // The type scale: four sizes, and nothing in between.
       fontSize: {

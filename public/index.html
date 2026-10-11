@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
   <script>
   // usernode-dev-console@1
   (function () {
@@ -26,8 +26,7 @@
             if (seen.has(val)) return '[Circular]';
             seen.add(val);
           }
-          if (typeof val === 'function') return '[Function ' + (val.name || 'anonymous') + ']';
-          if (val instanceof Error) return val.stack || (val.name + ': ' + val.message);
+          if (typeof val === 'function') return val.name || 'anonymous';
           return val;
         });
       } catch (e) { try { return String(v); } catch (_) { return '[unserializable]'; } }
@@ -65,32 +64,18 @@
   </script>
   <title>TeachMate</title>
   <link rel="icon" type="image/svg+xml" href="/logo.svg">
-  <!-- Tailwind, PRECOMPILED for this app (was cdn.tailwindcss.com's
-       in-browser engine plus an inline tailwind.config here). The config
-       moved to tailwind.config.js in the repo root; npm run build compiles
-       it to public/tailwind.css with Docker or Paketo on every image build, so the
-       stylesheet is regenerated from THIS commit's markup every deploy and
-       can never drift behind the code. ~7 KB of CSS instead of a ~400 KB
-       engine, and no flash of unstyled content.
-       Writing class names as whole literals is what keeps this working — a
-       class assembled from fragments at runtime (e.g. "bg-" + tone + "-500")
-       is invisible to the compiler. If you genuinely need runtime-generated
-       classes, swap this link for the platform-hosted engine instead:
-       <script src="/usernode-tailwind/v1/tailwind.js"></script> -->
+  <!-- Tailwind, PRECOMPILED for this app. npm run build compiles
+       tailwind.config.js + styles/tailwind-input.css to public/tailwind.css on
+       every image build. Class names must be written as whole literals — a
+       class assembled from fragments at runtime is invisible to the compiler. -->
   <link rel="stylesheet" href="/tailwind.css">
-  <!-- The platform bridge, centrally hosted and loaded by RELATIVE path (the
-       handler in server.js serves it under a plain "node server.js"; the
-       platform's edge answers it everywhere else). Never vendor it and never
-       write a hostname in front of it.
-       It is NOT conditional on this app calling a bridge API: it is also how
-       the app ANSWERS the shell, so a scaffold without it is invisible to
-       anything that asks the frame a question. Offline launch is one of those.
-       Another is the page's colour: the bridge reports this document's opaque
-       ground to the shell (#1581), which is what makes the platform bar above
-       the app take the app's tone instead of the viewer's theme (#1945).
-       The bridge is also where the app learns the viewer's light/dark theme:
-       the script below reads it. -->
+  <!-- The platform bridge, centrally hosted and loaded by RELATIVE path.
+       Also how the app answers the shell (offline launch included) and learns
+       the viewer's light/dark theme. -->
   <script src="/usernode-bridge/v1/bridge.js"></script>
+  <!-- The native-feel UI kit: swipe rows, menus, alerts, toasts, transitions. -->
+  <link rel="stylesheet" href="/usernode-native/v1/native.css">
+  <script src="/usernode-native/v1/native.js"></script>
   <!-- Follow the viewer's Homeroom theme (the bridge reports it), with the
        OS preference as the fallback outside Homeroom. -->
   <script>
@@ -107,29 +92,21 @@
     })();
   </script>
 </head>
-<body class="min-h-screen bg-ground text-fg">
-  <!-- Built from the design kit in styles/tailwind-input.css: colour tokens
-       that are right in both looks, and components for buttons, fields,
-       lists, cards and data states. The real app keeps the kit; CLAUDE.md's
-       "## Design" says how. -->
-  <!-- (Named in prose on purpose: Tailwind compiles any class-name word in
-       these files, comments included, and the starter should ship only the
-       components its screen uses.) -->
-  <main class="mx-auto flex max-w-md flex-col gap-8 px-4 py-10">
-
-    <!-- usernode-starter-notice@1 — starter-template messaging. When building
-         the user's real app, replace this whole screen and delete this block,
-         both sentinel comments included. -->
-    <section class="card flex flex-col items-start gap-3">
-      <img src="/logo.svg" alt="TeachMate logo" class="h-20 w-20">
-      <span class="rounded-full bg-secondary/10 px-3 py-1 text-small font-medium text-secondary">Starter template</span>
-      <h1 class="text-title">TeachMate</h1>
-      <p class="text-body text-muted">Welcome to your new app! Everything on this screen is placeholder content that came with it.</p>
-      <p class="text-body text-muted">To change this app, ask Homeroom bot: tap the <strong class="font-semibold text-fg">Homeroom icon</strong>, then <strong class="font-semibold text-fg">Suggest an improvement</strong>. Describe what you'd like in plain English, and it will be turned into your real app.</p>
-    </section>
-    <!-- /usernode-starter-notice@1 -->
-
-    <p class="text-center text-small text-muted">Built on Homeroom. This template screen disappears once you build your real app.</p>
-  </main>
+<body class="min-h-screen bg-ground text-fg" style="background:rgb(var(--ground))">
+  <header id="chrome" data-noprint>
+    <div class="flex items-center gap-2 px-4 pb-1 pt-3.5">
+      <img src="/logo.svg" alt="" class="h-7 w-7">
+      <h1 class="font-display text-heading font-bold leading-7">TeachMate</h1>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab is-on" id="tab-lessons" role="tab" aria-selected="true" data-nav="#/lessons">Lessons</button>
+      <button class="tab" id="tab-quizzes" role="tab" aria-selected="false" data-nav="#/quizzes">Quizzes</button>
+      <button class="tab" id="tab-grade" role="tab" aria-selected="false" data-nav="#/grade">Grade</button>
+      <button class="tab" id="tab-scores" role="tab" aria-selected="false" data-nav="#/scores">Scores</button>
+    </nav>
+    <p id="demo-line" class="mx-4 mt-3 text-small text-muted" hidden><b class="font-semibold text-fg">Staging demo:</b> sample lessons, quizzes and class scores to try.</p>
+  </header>
+  <main id="view" class="pb-10"></main>
+  <script type="module" src="/js/main.js"></script>
 </body>
 </html>

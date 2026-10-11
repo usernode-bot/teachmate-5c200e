@@ -2,6 +2,8 @@ const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
 const jwt = require('jsonwebtoken');
+const { migrate } = require('./lib/db');
+const buildRoutes = require('./lib/routes');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -37,7 +39,8 @@ const GUEST_PUBLIC_KEY = (process.env.USERNODE_GUEST_JWT_PUBLIC_KEY || '')
 // Everything else requires a valid platform-issued JWT.
 const PUBLIC_API_PATHS = new Set(['/health']);
 
-app.use(express.json());
+// 8mb: answer-sheet photos arrive as base64 data URLs.
+app.use(express.json({ limit: '8mb' }));
 
 // The platform's three centrally hosted files — the bridge, the native UI
 // kit and the Tailwind runtime — are reachable at these paths on this app's
@@ -147,6 +150,9 @@ app.use((req, res, next) => {
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
+// The app's API, behind the auth middleware above.
+app.use('/api', buildRoutes(pool));
+
 // index.html links the app's own /logo.svg as its favicon. Answer 204
 // here so anything that still probes /favicon.ico (older browsers,
 // direct visits) doesn't fall through to the auth-gated catch-all and
@@ -191,9 +197,18 @@ app.get('*', (req, res) => {
 });
 
 async function start() {
+  await migrate(pool);
   const server = app.listen(port, () => console.log(`Listening on :${port}`));
   // Let Envoy retire idle upstream connections at 60s, with a 15s margin.
   server.keepAliveTimeout = 75_000;
+  // Stop accepting connections, drain briefly, close the pool, exit.
+  const shutdown = () => {
+    console.log('shutting down');
+    server.close(() => pool.end().then(() => process.exit(0)));
+    setTimeout(() => process.exit(0), 3000).unref();
+  };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 }
 
 start().catch(err => { console.error(err); process.exit(1); });
