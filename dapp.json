@@ -3,5 +3,17 @@
   "icon": {
     "emoji": "🍎"
   },
-  "secrets": []
+  "secrets": [],
+  "llm": {
+    "purpose": "Writes lesson plans and quizzes, and reads answer sheet photos to suggest marks",
+    "suggested_daily_cap_cents": 200
+  },
+  "tests": [
+    { "name": "Lessons, empty account", "path": "/", "expectText": "No lesson plans yet" },
+    { "name": "Lessons demo", "id": "lessons.demo", "path": "/?demo=1", "expectText": "Staging demo", "visual": true, "impact": ["public/**", "styles/**", "server.js", "lib/**"] },
+    { "name": "Quizzes demo", "path": "/?demo=1#/quizzes", "expectText": "Water cycle quiz" },
+    { "name": "Grade form", "path": "/?demo=1#/grade", "expectSelector": "#grade-form" },
+    { "name": "Scores demo", "path": "/?demo=1#/scores", "expectText": "Room 12" },
+    { "name": "Scores, empty account", "path": "/#/scores", "expectText": "No scores yet" }
+  ]
 }

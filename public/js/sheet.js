@@ -1,0 +1,178 @@
+// The notebook sheet: renders a lesson or quiz body as ruled paper, read and
+// edit modes, plus the PDF export.
+
+import { esc, toast } from './app.js';
+import { gradeLabel, subjectLabel } from './icons.js';
+
+const RUBRIC_LEVELS = ['Excellent', 'Good', 'Developing', 'Beginning'];
+
+// Cumulative minute ranges for the margin: 0–5, 5–35, 35–45.
+function timeRanges(activities) {
+  let t = 0;
+  return activities.map(a => {
+    const from = t;
+    t += a.minutes;
+    return `${from}–${t}`;
+  });
+}
+
+export function lessonSheetHtml(doc) {
+  const b = doc.body;
+  const ranges = timeRanges(b.activities || []);
+  const list = (items, ordered = false) => {
+    const rows = (items || []).filter(s => String(s).trim());
+    if (!rows.length) return '';
+    return ordered ? `<ol>${rows.map(s => `<li>${esc(s)}</li>`).join('')}</ol>`
+      : `<ul>${rows.map(s => `<li>${esc(s)}</li>`).join('')}</ul>`;
+  };
+  const phase = (a, i) => a && `
+    <h3><span class="mt">${esc(ranges[i] || '')}</span>${esc(a.title)}</h3>
+    ${list(a.steps, true)}`;
+  return `<article class="sheet">
+    <h2 class="sheet-title">${esc(doc.title)}</h2>
+    <p class="meta">${esc(gradeLabel(doc.grade))} ${esc(subjectLabel(doc).toLowerCase())}, ${esc(b.durationMin)} minutes</p>
+    <h3>Learning objectives</h3>${list(b.objectives)}
+    ${b.materials && b.materials.filter(s => String(s).trim()).length ? `<h3>Materials</h3>${list(b.materials)}` : ''}
+    ${phase((b.activities || [])[0], 0)}
+    ${phase((b.activities || [])[1], 1)}
+    ${phase((b.activities || [])[2], 2)}
+    <h3>Assessment</h3>${list(b.assessment && b.assessment.checks)}
+  </article>`;
+}
+
+// The correct choice is circled in red pen on the answer key.
+function choice(q, i, key) {
+  const circled = key && i === q.answer;
+  const letter = `<span${circled ? ' class="key-circle"' : ''}>${'ABCD'[i]}</span>`;
+  return `<li>${letter}. ${esc(q.choices[i])}</li>`;
+}
+
+function rubricBlock(q) {
+  return `<div class="rubric">${q.rubric.map(r =>
+    `<div><b>${esc(r.level)} (${esc(r.points)})</b> — ${esc(r.desc)}</div>`).join('')}</div>`;
+}
+
+export function quizSheetHtml(doc, mode) {
+  const b = doc.body;
+  const key = mode === 'key';
+  const mc = (b.mc || []).map((q, i) => `
+    <li>
+      <p class="q">${esc(q.q)}</p>
+      <ul class="choices">${q.choices.map((c, ci) => choice(q, ci, key)).join('')}</ul>
+    </li>`).join('');
+  const essay = (b.essay || []).map((q, i) => `
+    <li>
+      <p class="q">${esc(q.q)} <span class="pts">(${esc(q.points)} points)</span></p>
+      ${key ? rubricBlock(q) : ''}
+    </li>`).join('');
+  return `<article class="sheet">
+    <h2 class="sheet-title">${esc(doc.title)}</h2>
+    <p class="meta">${esc(gradeLabel(doc.grade))} ${esc(subjectLabel(doc).toLowerCase())}${key ? ' — Answer key' : ''}</p>
+    ${mc ? `<h3>Multiple choice</h3><ol>${mc}</ol>` : ''}
+    ${essay ? `<h3>Essay questions</h3><ol start="${(b.mc || []).length + 1}">${essay}</ol>` : ''}
+    ${key ? '<h3>Scoring rubric</h3><div class="rubric"><div>Multiple choice: 1 point each. Essays: see each question\'s rubric above.</div></div>' : ''}
+  </article>`;
+}
+
+// ── Edit mode ──────────────────────────────────────────────────────────────
+const ta = (name, value, rows = 2) =>
+  `<textarea class="field" data-f="${name}" rows="${rows}">${esc(value)}</textarea>`;
+
+export function lessonEditHtml(doc) {
+  const b = doc.body;
+  const ranges = timeRanges(b.activities || []);
+  return `<article class="sheet sheet-edit">
+    ${ta('title', doc.title, 1)}
+    <p class="meta">${esc(gradeLabel(doc.grade))} ${esc(subjectLabel(doc).toLowerCase())}, ${esc(b.durationMin)} minutes</p>
+    <h3>Learning objectives</h3>${ta('objectives', (b.objectives || []).join('\n'), 3)}
+    <h3>Materials</h3>${ta('materials', (b.materials || []).join('\n'), 2)}
+    ${(b.activities || []).map((a, i) => `
+      <h3><span class="mt">${esc(ranges[i] || '')}</span><span class="lab">${esc(a.title)}</span> <span class="min">${esc(a.minutes)} min</span></h3>
+      <textarea class="field" data-f="steps:${i}" data-phase="${esc(a.phase)}" data-title="${esc(a.title)}" data-min="${esc(a.minutes)}" data-i="${i}" rows="3">${esc(a.steps.join('\n'))}</textarea>`).join('')}
+    <span data-duration="${esc(b.durationMin)}" hidden></span>
+    <h3>Assessment</h3>${ta('checks', ((b.assessment && b.assessment.checks) || []).join('\n'), 2)}
+  </article>`;
+}
+
+// Reads the edit sheet back into a body the server re-validates.
+export function readLessonEdit(root) {
+  const val = name => (root.querySelector(`[data-f="${name}"]`) || {}).value;
+  const lines = s => String(s || '').split('\n').map(x => x.trim()).filter(Boolean);
+  const activities = [];
+  root.querySelectorAll('[data-phase]').forEach(el => {
+    activities.push({
+      phase: el.dataset.phase,
+      title: el.dataset.title,
+      minutes: Number(el.dataset.min),
+      steps: lines(val(`steps:${el.dataset.i}`)),
+    });
+  });
+  return {
+    title: val('title'),
+    body: {
+      objectives: lines(val('objectives')),
+      materials: lines(val('materials')),
+      activities,
+      assessment: { checks: lines(val('checks')) },
+      durationMin: Number(root.querySelector('[data-duration]').dataset.duration),
+    },
+  };
+}
+
+export function quizEditHtml(doc) {
+  const b = doc.body;
+  return `<article class="sheet sheet-edit">
+    ${ta('title', doc.title, 1)}
+    <h3>Multiple choice</h3>
+    ${(b.mc || []).map((q, i) => `
+      <div class="qed" data-mc="${i}">
+        <p class="qed-n">Q${i + 1}</p>
+        ${ta(`mcq:${i}`, q.q, 2)}
+        ${q.choices.map((c, ci) => `<input class="field" data-f="mcc:${i}:${ci}" value="${esc(c)}" placeholder="${'ABCD'[ci]}">`).join('')}
+        <div class="qed-key"><span class="lab">Correct</span>
+          <div class="seg" data-correct="${i}">${'ABCD'.split('').map((L, ci) =>
+            `<button type="button" data-i="${ci}" class="${q.answer === ci ? 'is-on' : ''}">${L}</button>`).join('')}</div>
+        </div>
+      </div>`).join('')}
+    <h3>Essay questions</h3>
+    ${(b.essay || []).map((q, i) => `
+      <div class="qed" data-essay="${i}">
+        <p class="qed-n">Essay ${i + 1} <span class="pts">(${esc(q.points)} points)</span></p>
+        ${ta(`essayq:${i}`, q.q, 2)}
+        <div class="qed-key"><span class="lab">Points</span>
+          <div class="stepper" data-pts="${i}"><button type="button" data-d="-1">${'-'}</button><output>${esc(q.points)}</output><button type="button" data-d="1">${'+'}</button></div>
+        </div>
+        ${q.rubric.map((r, ri) => `<label class="section-label">${esc(r.level)} (${esc(r.points)})</label>${ta(`rub:${i}:${ri}`, r.desc, 1)}`).join('')}
+      </div>`).join('')}
+  </article>`;
+}
+
+export function readQuizEdit(root) {
+  const val = name => (root.querySelector(`[data-f="${name}"]`) || {}).value;
+  const mc = [...root.querySelectorAll('[data-mc]')].map((el, i) => ({
+    q: val(`mcq:${i}`) || '',
+    choices: [0, 1, 2, 3].map(ci => (val(`mcc:${i}:${ci}`) || '').trim()),
+    answer: Number(el.querySelector('.seg .is-on')?.dataset.i ?? 0),
+  }));
+  const essay = [...root.querySelectorAll('[data-essay]')].map((el, i) => {
+    const points = Number(el.querySelector('[data-pts] output').textContent) || 4;
+    return {
+      q: val(`essayq:${i}`) || '',
+      points,
+      rubric: ['Excellent', 'Good', 'Developing', 'Beginning'].map((level, ri) => ({
+        level,
+        desc: (val(`rub:${i}:${ri}`) || '').trim() || ['Complete and accurate, with clear reasoning', 'Mostly accurate with some reasoning', 'Partly accurate or unclear', 'Attempted with little accuracy'][ri],
+        points: Math.max(0, points - ri),
+      })),
+    };
+  });
+  return { title: val('title'), body: { mc, essay } };
+}
+
+export function exportPdf() {
+  try {
+    window.print();
+  } catch {
+    toast("Printing isn't available here.");
+  }
+}

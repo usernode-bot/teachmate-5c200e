@@ -3,70 +3,74 @@
  * Deliberately OUTSIDE public/ so it is never served — the @tailwind lines
  * are build-time directives and mean nothing to a browser. npm run build
  * compiles this to public/tailwind.css with Docker or Paketo.
- *
- * "base" is the preflight layer (the cross-browser reset). Keep all three
- * layers, in this order; dropping base changes every heading, list and form
- * control.
  */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* ── Colour tokens ────────────────────────────────────────────────────────
- * This app's palette, defined once. Each value is "R G B"; tailwind.config.js
- * names them (bg-ground, bg-surface, text-fg, text-muted, border-line,
- * bg-accent with text-on-accent, ...). :root is the light look, and .dark,
- * which the theme script in public/index.html sets on <html>, the dark one.
- *
- * Re-theme the app HERE: change the values, keep the names. The defaults
- * (warm greys, one teal accent) are a quiet starting point, not a look.
- * Keep every text pair at 4.5:1 or more in both looks: fg and muted on
- * ground, surface and raised; accent and danger on ground and surface;
- * on-accent on accent; on-danger on danger.
- *
- * Adopting the native UI kit later? Point its --un-accent and
- * --un-accent-contrast at the accent and on-accent tokens.
+ * TeachMate's palette: warm grey neutrals, pencil yellow as the one action
+ * colour, and the classroom's folder colours per subject. Red is the
+ * teacher's red pen, used only for marks a teacher writes. Each value is
+ * "R G B"; tailwind.config.js names them. :root is the light look, .dark the
+ * dark one, following the viewer's Homeroom theme.
  */
 @layer base {
   :root {
-    --ground: 250 250 249;    /* the page */
-    --surface: 255 255 255;   /* lists, cards, fields */
-    --raised: 245 245 244;    /* hovers, badges */
-    --fg: 28 25 23;           /* text */
-    --muted: 87 83 78;        /* secondary text */
-    --line: 231 229 228;      /* borders, dividers, skeletons */
-    --accent: 15 118 110;     /* the one accent */
-    --on-accent: 255 255 255; /* text on the accent */
+    --ground: 245 245 243;    /* the page, a neutral warm grey */
+    --surface: 255 255 255;   /* form card, lists, fields */
+    --raised: 237 236 233;    /* tab track, hovers */
+    --fg: 31 30 28;           /* text, graphite */
+    --muted: 92 89 84;        /* secondary text */
+    --line: 222 220 215;      /* borders, dividers */
+    --accent: 247 193 41;     /* pencil yellow, used only as a fill */
+    --on-accent: 38 33 20;    /* graphite text on pencil yellow */
     --danger: 185 28 28;
     --on-danger: 255 255 255;
-    --focus: 13 148 136;      /* the keyboard focus ring */
+    --focus: 29 78 216;       /* the keyboard focus ring */
+    --mark: 200 35 45;        /* red pen */
+    --paper: 255 255 252;     /* the notebook sheet */
+    --rule: 196 214 236;      /* the sheet's blue ruled lines */
+    --redline: 232 150 150;   /* the sheet's red margin line */
+    --on-subject: 255 255 255; /* icons and text on a subject colour */
+    --subj-math: 37 99 235;   /* Math, blue folder */
+    --subj-ela: 200 45 55;    /* English, red folder */
+    --subj-sci: 22 128 61;    /* Science, green folder */
+    --subj-soc: 194 90 12;    /* Social studies, orange folder */
+    --subj-art: 126 58 196;   /* Arts, purple folder */
+    --subj-other: 100 100 110; /* Other subjects, grey folder */
   }
   .dark {
-    --ground: 12 10 9;
-    --surface: 28 25 23;
-    --raised: 41 37 36;
-    --fg: 245 245 244;
-    --muted: 168 162 158;
-    --line: 68 64 60;
-    --accent: 45 212 191;
-    --on-accent: 4 47 46;
+    --ground: 22 22 21;
+    --surface: 32 32 30;
+    --raised: 44 43 41;
+    --fg: 240 239 235;
+    --muted: 170 167 160;
+    --line: 64 62 58;
+    --accent: 250 204 21;
+    --on-accent: 38 33 20;
     --danger: 248 113 113;
     --on-danger: 69 10 10;
-    --focus: 94 234 212;
+    --focus: 147 197 253;
+    --mark: 252 129 129;
+    --paper: 30 33 38;        /* dark slate paper */
+    --rule: 52 68 96;         /* dim blue rules */
+    --redline: 140 60 64;     /* muted red margin line */
+    --on-subject: 22 22 21;
+    --subj-math: 96 165 250;
+    --subj-ela: 248 113 113;
+    --subj-sci: 74 222 128;
+    --subj-soc: 251 146 60;
+    --subj-art: 192 132 252;
+    --subj-other: 161 161 170;
   }
-  /* el.hidden = true hides an element even when a class gives it a display
-     (flex, the components below). */
+  /* el.hidden = true hides an element even when a class gives it a display. */
   [hidden]:where(:not([hidden="until-found"])) {
     display: none !important;
   }
 }
 
-/* ── Components ───────────────────────────────────────────────────────────
- * A small starting kit on the tokens. Use these rather than restyling the
- * same thing by hand, add to them sparingly, and change a component here
- * rather than one copy of it. Type: text-title, text-heading, text-body and
- * text-small (tailwind.config.js), nothing in between.
- */
+/* ── Components ─────────────────────────────────────────────────────────── */
 @layer components {
   /* Buttons: one primary per screen, the rest secondary. At least 44 px
      each way, so they are easy to tap. */
@@ -83,16 +87,13 @@
     @apply border border-line bg-surface text-fg hover:bg-raised;
   }
 
-  /* Text inputs, selects and textareas: <input class="field">, 44 px tall.
-     The placeholder is a faint hint (muted at 60%), so an example such as
-     "5.0" never reads as a value somebody already typed in. */
+  /* Text inputs, selects and textareas. */
   .field {
     @apply block min-h-11 w-full rounded-lg border border-line bg-surface px-3 py-2 text-body text-fg
       placeholder:text-muted/60 focus:outline-none focus:ring-2 focus:ring-focus;
   }
 
-  /* A grouped list: <ul class="list"> of <li class="list-row">. The usual
-     way to show several things; prefer it to a stack of cards. */
+  /* A grouped list: <ul class="list"> of <li class="list-row">. */
   .list {
     @apply divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface;
   }
@@ -100,8 +101,7 @@
     @apply flex min-h-11 items-center gap-3 px-4 py-3;
   }
 
-  /* A card: one self-contained thing, usually something you tap. Most
-     screens need none. Never put a card inside a card or a .list. */
+  /* A card: one self-contained thing, usually something you tap. */
   .card {
     @apply rounded-xl border border-line bg-surface p-4;
   }
@@ -111,18 +111,252 @@
     @apply mb-2 px-1 text-small font-medium text-muted;
   }
 
-  /* The states of anything that loads data. Show exactly one at a time:
-     - loading: .skeleton shapes where the data will be, never a blank;
-     - empty, only when the load WORKED and found nothing: a title, one
-       sentence and the action that fills it;
-     - error, only when the load FAILED: what failed, what still works,
-       and a Retry button.
-     Never show the empty state while loading or for a failure. */
+  /* States of anything that loads data. */
   .skeleton {
     @apply rounded-md bg-line motion-safe:animate-pulse;
   }
   .state-empty,
   .state-error {
     @apply flex flex-col items-center gap-2 px-4 py-8 text-center;
+  }
+
+  /* The tab bar: a grey track, the selected tab a pencil-yellow pill. */
+  .tabs {
+    @apply mx-3 mt-1 flex gap-1 rounded-xl bg-raised p-1;
+  }
+  .tab {
+    @apply flex min-h-11 flex-1 select-none items-center justify-center rounded-lg text-small font-medium text-muted
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus;
+  }
+  .tab.is-on {
+    @apply bg-accent font-semibold text-on-accent;
+  }
+
+  /* Subject chips. Each carries an s-* class that sets --c. */
+  .chip {
+    @apply inline-flex min-h-11 select-none items-center gap-2 rounded-full border border-line bg-surface px-3.5 text-small text-fg
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus;
+  }
+  .chip i {
+    display: inline-block;
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: 9999px;
+    background: rgb(var(--c));
+  }
+  .chip.is-on {
+    border-color: rgb(var(--c) / 1);
+    box-shadow: inset 0 0 0 1px rgb(var(--c));
+    background: rgb(var(--c) / 0.08);
+    @apply font-semibold;
+  }
+
+  /* A stepper: minus, value, plus. */
+  .stepper {
+    @apply flex min-h-11 items-center justify-between rounded-lg border border-line bg-surface;
+  }
+  .stepper button {
+    @apply flex h-11 w-11 items-center justify-center text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus disabled:opacity-40;
+  }
+  .stepper output {
+    @apply text-body font-semibold;
+  }
+
+  /* The subject tile, with a folder tab's clipped corner at the top left. */
+  .subj {
+    flex: none;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 3px 9px 9px 9px;
+    background: rgb(var(--c));
+    color: rgb(var(--on-subject));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* The sheet's folder tab naming the subject, above the top-left corner. */
+  .sheet-flag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 12px;
+    padding: 4px 12px;
+    border-radius: 8px 8px 0 0;
+    background: rgb(var(--c));
+    color: rgb(var(--on-subject));
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+  }
+
+  /* The notebook sheet: blue rules every 28 px, a red margin line, text
+     sitting on the lines. The signature element. */
+  .sheet {
+    position: relative;
+    margin: 0 12px;
+    background-color: rgb(var(--paper));
+    background-image: repeating-linear-gradient(rgb(var(--paper)) 0 27px, rgb(var(--rule)) 27px 28px);
+    border: 1px solid rgb(var(--line));
+    border-radius: 0 8px 8px 8px;
+    padding: 28px 16px 28px 60px;
+    line-height: 28px;
+    color: rgb(var(--fg));
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .sheet::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 46px;
+    border-left: 2px solid rgb(var(--redline));
+  }
+  .sheet .sheet-title {
+    font-family: ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
+    font-weight: 700;
+    font-size: 1.75rem;
+    line-height: 56px;
+    margin: 0;
+  }
+  .sheet .meta {
+    margin: 0 0 28px;
+    color: rgb(var(--muted));
+  }
+  .sheet h3 {
+    position: relative;
+    font-family: ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 1.25rem;
+    line-height: 28px;
+    margin: 28px 0 0;
+  }
+  .sheet p, .sheet div, .sheet textarea {
+    line-height: 28px;
+    margin: 0;
+  }
+  .sheet ul, .sheet ol {
+    margin: 0;
+    padding-left: 20px;
+  }
+  .sheet li {
+    line-height: 28px;
+  }
+  /* The red circle around a correct choice on the answer key. */
+  .sheet .key-circle {
+    display: inline-block;
+    min-width: 1.6rem;
+    text-align: center;
+    border: 2px solid rgb(var(--mark));
+    border-radius: 9999px;
+    color: rgb(var(--mark));
+    font-weight: 600;
+  }
+  .sheet .rubric {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: rgb(var(--muted));
+    margin: 4px 0 8px;
+  }
+  .sheet .pts, .sheet .min, .sheet .lab {
+    font-size: 0.875rem;
+    color: rgb(var(--muted));
+  }
+  .sheet .qed {
+    margin-bottom: 16px;
+  }
+  .sheet .qed-n {
+    font-weight: 600;
+  }
+  .sheet .qed-key {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .sheet .qed input.field, .sheet .qed textarea.field {
+    margin-top: 4px;
+  }
+  /* Lesson timings written in red in the margin, like a teacher's note. */
+  .sheet .mt {
+    position: absolute;
+    left: -58px;
+    top: 0;
+    width: 42px;
+    white-space: nowrap;
+    text-align: right;
+    font: 600 0.875rem/28px system-ui, sans-serif;
+    color: rgb(var(--mark));
+  }
+  /* Fields on the sheet, for edit mode and hand-entered answers. */
+  .sheet .field {
+    background: transparent;
+    border-color: transparent;
+    line-height: 28px;
+    min-height: 28px;
+    padding: 0;
+  }
+  .sheet .field:focus {
+    background: rgb(var(--surface));
+    border-color: rgb(var(--line));
+  }
+
+  /* Segmented control: two or more options in one track. */
+  .seg {
+    @apply flex rounded-lg border border-line bg-raised p-0.5;
+  }
+  .seg button {
+    @apply flex min-h-9 flex-1 select-none items-center justify-center rounded-md px-2 text-small font-medium text-muted
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus;
+  }
+  .seg .is-on {
+    @apply bg-surface font-semibold text-fg shadow-sm;
+  }
+}
+
+/* Utility classes that need the --c subject variable; written here so every
+   use picks the colour up from one place. */
+.s-math { --c: var(--subj-math); }
+.s-ela { --c: var(--subj-ela); }
+.s-sci { --c: var(--subj-sci); }
+.s-soc { --c: var(--subj-soc); }
+.s-art { --c: var(--subj-art); }
+.s-other { --c: var(--subj-other); }
+
+/* Printed PDFs are always the clean light sheet: no app buttons, no tabs. */
+@media print {
+  [data-noprint] {
+    display: none !important;
+  }
+  .dark {
+    --ground: 245 245 243;
+    --surface: 255 255 255;
+    --raised: 237 236 233;
+    --fg: 31 30 28;
+    --muted: 92 89 84;
+    --line: 222 220 215;
+    --accent: 247 193 41;
+    --on-accent: 38 33 20;
+    --focus: 29 78 216;
+    --mark: 200 35 45;
+    --paper: 255 255 252;
+    --rule: 196 214 236;
+    --redline: 232 150 150;
+    --on-subject: 255 255 255;
+    --subj-math: 37 99 235;
+    --subj-ela: 200 45 55;
+    --subj-sci: 22 128 61;
+    --subj-soc: 194 90 12;
+    --subj-art: 126 58 196;
+    --subj-other: 100 100 110;
+  }
+  body {
+    background: rgb(var(--paper)) !important;
+  }
+  .sheet {
+    margin: 0;
+    border: none;
+    width: 100%;
   }
 }
