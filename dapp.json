@@ -1,9 +1,27 @@
 {
   "description": "AI lesson plans, quizzes and grading for K-12 teachers",
   "icon": {
+    "image": "brand/icon.png",
     "emoji": "🍎"
   },
   "secrets": [],
+  "tests": [
+    {
+      "id": "home.logo",
+      "name": "Home shows the TeachMate logo mark",
+      "path": "/",
+      "expectSelector": "img[src='/logo.svg']",
+      "expectText": "TeachMate",
+      "visual": true,
+      "impact": [
+        "public/index.html",
+        "public/logo.svg",
+        "styles/tailwind-input.css",
+        "tailwind.config.js",
+        "brand/**"
+      ]
+    }
+  ],
   "visibility": {
     "build": "public",
     "view": "public"
