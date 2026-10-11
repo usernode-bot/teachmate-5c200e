@@ -50,8 +50,9 @@ module.exports = {
         fg: token('fg'), // text
         muted: token('muted'), // secondary text
         line: token('line'), // borders, dividers, skeletons
-        accent: token('accent'), // the one accent: the primary action
+        accent: token('accent'), // the primary colour: the primary action
         'on-accent': token('on-accent'), // text on the accent
+        secondary: token('secondary'), // the second brand colour: orange highlights
         danger: token('danger'),
         'on-danger': token('on-danger'),
         focus: token('focus'), // the keyboard focus ring
