@@ -28,6 +28,7 @@
     --danger: 185 28 28;
     --on-danger: 255 255 255;
     --focus: 29 78 216;       /* the keyboard focus ring */
+    --secondary: 194 65 12;   /* the logo's orange */
     --mark: 200 35 45;        /* red pen */
     --paper: 255 255 252;     /* the notebook sheet */
     --rule: 196 214 236;      /* the sheet's blue ruled lines */
@@ -52,6 +53,7 @@
     --danger: 248 113 113;
     --on-danger: 69 10 10;
     --focus: 147 197 253;
+    --secondary: 251 146 60;
     --mark: 252 129 129;
     --paper: 30 33 38;        /* dark slate paper */
     --rule: 52 68 96;         /* dim blue rules */

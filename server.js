@@ -153,11 +153,10 @@ app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 // The app's API, behind the auth middleware above.
 app.use('/api', buildRoutes(pool));
 
-// The template ships no favicon file; index.html carries an inline SVG
-// icon instead. Answer 204 here so anything that still probes
-// /favicon.ico (older browsers, direct visits) doesn't fall through to
-// the auth-gated catch-all and surface a 401 in the console on every
-// fresh load.
+// index.html links the app's own /logo.svg as its favicon. Answer 204
+// here so anything that still probes /favicon.ico (older browsers,
+// direct visits) doesn't fall through to the auth-gated catch-all and
+// surface a 401 in the console on every fresh load.
 app.get('/favicon.ico', (_req, res) => res.status(204).end());
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -190,7 +189,7 @@ app.get('*', (req, res) => {
   <div style="max-width:24rem;padding:2rem;text-align:center">
     <h1 style="font-size:1.25rem;margin:0 0 0.5rem">Open this app inside Homeroom</h1>
     <p style="color:#a1a1aa;font-size:0.9rem;margin:0 0 1.25rem">This page is served via the platform; direct visits aren't authenticated.</p>
-    <a href="${PLATFORM_ORIGIN}/app/teachmate-5c200e/full${deepPath}" style="display:inline-block;padding:0.5rem 1rem;background:#7c3aed;color:white;border-radius:0.5rem;text-decoration:none;font-size:0.9rem">Open in Homeroom</a>
+    <a href="${PLATFORM_ORIGIN}/app/teachmate-5c200e/full${deepPath}" style="display:inline-block;padding:0.5rem 1rem;background:#1e40af;color:white;border-radius:0.5rem;text-decoration:none;font-size:0.9rem">Open in Homeroom</a>
   </div>
 </body>`);
   }

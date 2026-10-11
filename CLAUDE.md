@@ -126,6 +126,10 @@ changes the look on purpose.
   Headings and titles use the rounded system face (`fontFamily.display`,
   SF Pro Rounded on Apple devices); everything else the system sans. On the
   sheet, body text sits on the 28 px rules.
+- **Logo:** the TeachMate mark (an orange graduation cap over a white open
+  book on a deep blue rounded square: `brand/icon.svg`, flat version at
+  `public/logo.svg`) is the favicon and sits in the header. The warm orange
+  `secondary` token (`#C2410C` light / `#FB923C` dark) comes from its cap.
 - Both looks follow the viewer's Homeroom theme and switch live; there is no
   theme picker. Printed PDFs always use the light look (the `@media print`
   block forces the light token values).
