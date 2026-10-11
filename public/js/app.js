@@ -146,7 +146,7 @@ export async function render() {
   chrome.hidden = isDetail;
   const section = path.split('/')[1];
   tabs.forEach(t => {
-    const on = !isDetail && t.dataset.nav === '#' + section;
+    const on = !isDetail && t.dataset.nav === '#/' + section;
     t.classList.toggle('is-on', on);
     t.setAttribute('aria-selected', String(on));
   });
@@ -179,5 +179,5 @@ export async function render() {
 }
 
 tabs.forEach(t => t.addEventListener('click', () => {
-  if (t.dataset.nav !== '#' + hashPath().path.split('/')[1]) location.hash = t.dataset.nav;
+  if (t.dataset.nav !== '#/' + hashPath().path.split('/')[1]) location.hash = t.dataset.nav;
 }));
