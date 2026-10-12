@@ -5,13 +5,15 @@ import {
   api, esc, fmtWhen, navigate, register, skeletons, stateEmpty, stateError,
   toast, confirmDialog, AI_MESSAGES, withAi,
 } from './app.js';
-import { ICONS, SUBJECTS, gradeLabel, subjectTile, subjectLabel } from './icons.js';
+import { ICONS, SUBJECTS, CURRICULA, gradeLabel, subjectTile, subjectLabel, curriculumLabel } from './icons.js';
 import { lessonSheetHtml, lessonEditHtml, readLessonEdit, exportPdf } from './sheet.js';
 
-// The form starts where the teacher last left it.
+// The form starts where the teacher last left it. A stale curriculum value
+// falls back to General.
 const prefs = {
   subject: localStorage.getItem('tm.subject') || '',
   grade: localStorage.getItem('tm.grade') || '5',
+  curriculum: CURRICULA[localStorage.getItem('tm.curriculum')] ? localStorage.getItem('tm.curriculum') : 'general',
 };
 let duration = 45;
 let topic = '';
@@ -41,6 +43,13 @@ function formHtml() {
         </div>
       </div>
     </div>
+    <div class="mb-3">
+      <label class="section-label" for="l-curriculum">Curriculum</label>
+      <select class="field" id="l-curriculum">${Object.entries(CURRICULA)
+        .map(([k, label]) => `<option value="${k}" ${prefs.curriculum === k ? 'selected' : ''}>${label}</option>`).join('')}</select>
+    </div>
+    ${prefs.curriculum === 'other' ? `<label class="section-label" for="l-curriculum-name">Curriculum name</label>
+    <input class="field mb-3" id="l-curriculum-name" placeholder="e.g. National Curriculum for England" maxlength="60">` : ''}
     <label class="section-label" for="l-topic">Topic</label>
     <input class="field mb-3" id="l-topic" placeholder="e.g. Fractions on a number line" maxlength="120" value="${esc(topic)}">
     <button id="l-write" class="btn-primary w-full">Write lesson plan</button>
@@ -155,6 +164,12 @@ function bindForm(view) {
     prefs.grade = grade.value;
     localStorage.setItem('tm.grade', prefs.grade);
   });
+  const curriculum = view.querySelector('#l-curriculum');
+  curriculum.addEventListener('change', () => {
+    prefs.curriculum = curriculum.value;
+    localStorage.setItem('tm.curriculum', prefs.curriculum);
+    lessonsScreen(view);
+  });
   const stepper = view.querySelector('#l-duration');
   stepper.addEventListener('click', e => {
     const b = e.target.closest('[data-d]');
@@ -172,15 +187,23 @@ async function writePlan() {
   const progress = view.querySelector('#l-progress');
   const errorBox = view.querySelector('#l-error');
   const subjectName = (view.querySelector('#l-subject-name') || {}).value;
+  const curriculumName = (view.querySelector('#l-curriculum-name') || {}).value;
   topic = view.querySelector('#l-topic').value.trim();
   if (!prefs.subject) { errorBox.hidden = false; errorBox.innerHTML = '<p class="text-small text-muted">Pick a subject first.</p>'; return; }
   if (!topic) { errorBox.hidden = false; errorBox.innerHTML = '<p class="text-small text-muted">Type a topic first.</p>'; return; }
+  if (prefs.curriculum === 'other' && !(curriculumName || '').trim()) {
+    errorBox.hidden = false;
+    errorBox.innerHTML = '<p class="text-small text-muted">Type a curriculum name first.</p>';
+    return;
+  }
   errorBox.hidden = true;
   btn.disabled = true;
   progress.classList.remove('hidden');
   const body = {
     kind: 'lesson', subject: prefs.subject, subjectName: prefs.subject === 'other' ? subjectName : undefined,
     grade: prefs.grade, topic, durationMin: duration,
+    curriculum: prefs.curriculum === 'general' ? undefined : prefs.curriculum,
+    curriculumName: prefs.curriculum === 'other' ? curriculumName.trim() : undefined,
   };
   try {
     const doc = await withAi(() => api('/api/documents/generate', { method: 'POST', body }));
@@ -239,9 +262,11 @@ async function lessonDetail(view, id) {
     <div class="flex gap-2 px-3 pb-3 pt-1" data-noprint>${tools}</div>
     <div><span class="sheet-flag ${s.cls}">${s.icon}${esc(subjectLabel(doc))}</span></div>
     <div id="d-sheet">${editing ? lessonEditHtml(doc) : lessonSheetHtml(doc)}</div>
-    <p class="mx-4 mt-3 text-small text-muted" data-noprint>${esc(doc.source === 'ai'
+    <p class="mx-4 mt-3 text-small text-muted" data-noprint>${esc((doc.source === 'ai'
       ? `Written with AI on ${fmtWhen(doc.created_at)}. Read it through before you teach it.`
-      : 'Written by hand. Read it through before you teach it.')}</p>`;
+      : 'Written by hand. Read it through before you teach it.')
+      + (doc.body.standards && doc.body.standards.some(s => s && String(s).trim())
+        ? ' Check the standard codes against your official curriculum.' : ''))}</p>`;
 
   view.querySelector('[data-nav]').addEventListener('click', () => { history.back(); });
   if (editing) {
@@ -295,7 +320,10 @@ async function writeAgain(doc, view) {
       method: 'POST',
       body: {
         kind: 'lesson', subject: doc.subject, subjectName: doc.subject_name,
-        grade: doc.grade, topic: doc.topic, durationMin: doc.body.durationMin, replaceId: doc.id,
+        grade: doc.grade, topic: doc.topic, durationMin: doc.body.durationMin,
+        curriculum: doc.curriculum || undefined,
+        curriculumName: doc.curriculum === 'other' ? doc.curriculum_name : undefined,
+        replaceId: doc.id,
       },
     }));
     toast('Lesson plan saved');
