@@ -12,10 +12,20 @@ test('every demo lesson passes the normalizer', () => {
         { phase: 'main', title: 'Main activity', minutes: l.mins[1], steps: l.main },
         { phase: 'closing', title: 'Closing', minutes: l.mins[2], steps: l.close },
       ],
-      assessment: { checks: l.checks },
-    }, { topic: l.topic, durationMin: l.dur });
+      assessment: { checks: l.checks, aligned: l.aligned },
+      standards: l.std,
+    }, { topic: l.topic, durationMin: l.dur, curriculum: l.cur || null, requireStandards: !!l.cur });
     assert.ok(out.body.activities.length === 3, l.key);
+    if (l.cur) assert.ok(out.body.standards && out.body.standards.length, l.key);
+    else assert.ok(!out.body.standards, l.key);
   }
+});
+
+test('the Common Core demo lesson keeps its standard and aligned idea', () => {
+  const l = LESSONS.find(x => x.key === 'lesson-equivalent-fractions');
+  assert.equal(l.cur, 'ccss');
+  assert.ok(l.std[0].startsWith('CCSS.MATH.CONTENT.3.NF.A.3:'));
+  assert.ok(l.aligned);
 });
 
 test('every demo quiz passes the normalizer', () => {

@@ -138,3 +138,36 @@ test('cleanContext drops a bad tool and an out-of-range count; empty is null', (
   const out = normalizeLesson(goodLesson, lessonInput);
   assert.equal('context' in out.body, false);
 });
+
+test('a plan without a curriculum has no standards key and no aligned', () => {
+  const out = normalizeLesson(structuredClone(goodLesson), lessonInput);
+  assert.ok(!('standards' in out.body));
+  assert.ok(!('aligned' in out.body.assessment));
+});
+
+test('supplied standards are kept even without requireStandards (the hand-edit path)', () => {
+  const raw = structuredClone(goodLesson);
+  raw.standards = ['  CCSS.MATH.CONTENT.3.NF.A.1: Understand fractions. ', ''];
+  raw.assessment.aligned = 'Exit ticket on unit fractions.';
+  const out = normalizeLesson(raw, lessonInput);
+  assert.deepEqual(out.body.standards, ['CCSS.MATH.CONTENT.3.NF.A.1: Understand fractions.']);
+  assert.equal(out.body.assessment.aligned, 'Exit ticket on unit fractions.');
+});
+
+test('with requireStandards, standards are trimmed, blanks dropped, capped at 3, aligned kept', () => {
+  const raw = structuredClone(goodLesson);
+  raw.standards = ['  A: one  ', '', 'B: two', 'C: three', 'D: four'];
+  raw.assessment.aligned = '  Quiz idea  ';
+  const out = normalizeLesson(raw, { ...lessonInput, requireStandards: true });
+  assert.deepEqual(out.body.standards, ['A: one', 'B: two', 'C: three']);
+  assert.equal(out.body.assessment.aligned, 'Quiz idea');
+});
+
+test('with requireStandards, a missing standards list or aligned throws', () => {
+  const noStd = structuredClone(goodLesson);
+  noStd.assessment.aligned = 'Quiz idea';
+  assert.throws(() => normalizeLesson(noStd, { ...lessonInput, requireStandards: true }));
+  const noAligned = structuredClone(goodLesson);
+  noAligned.standards = ['A: one'];
+  assert.throws(() => normalizeLesson(noAligned, { ...lessonInput, requireStandards: true }));
+});

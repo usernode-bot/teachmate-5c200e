@@ -2,7 +2,7 @@
 // edit modes, plus the PDF export.
 
 import { esc, toast } from './app.js';
-import { gradeLabel, subjectLabel } from './icons.js';
+import { gradeLabel, subjectLabel, curriculumLabel } from './icons.js';
 
 const RUBRIC_LEVELS = ['Excellent', 'Good', 'Developing', 'Beginning'];
 const TRACK_NAMES = { support: 'Support', core: 'Core', challenge: 'Challenge' };
@@ -38,15 +38,21 @@ export function lessonSheetHtml(doc) {
   const meta = [`${esc(b.durationMin)} minutes`];
   if (ctx.studentCount != null) meta.push(`${esc(ctx.studentCount)} students`);
   if (ctx.tools && TOOL_WORDS[ctx.tools]) meta.push(TOOL_WORDS[ctx.tools]);
+  const cur = curriculumLabel(doc);
+  if (cur) meta.push(esc(cur));
+  const standards = (b.standards || []).filter(s => String(s).trim());
+  const aligned = b.assessment && String(b.assessment.aligned || '').trim();
   return `<article class="sheet">
     <h2 class="sheet-title">${esc(doc.title)}</h2>
     <p class="meta">${esc(gradeLabel(doc.grade))} ${esc(subjectLabel(doc).toLowerCase())}, ${meta.join(', ')}</p>
     <h3>Learning objectives</h3>${list(b.objectives)}
+    ${standards.length ? `<h3>Curriculum standards</h3>${list(standards)}` : ''}
     ${b.materials && b.materials.filter(s => String(s).trim()).length ? `<h3>Materials</h3>${list(b.materials)}` : ''}
     ${phase((b.activities || [])[0], 0)}
     ${phase((b.activities || [])[1], 1)}
     ${phase((b.activities || [])[2], 2)}
     <h3>Assessment</h3>${list(b.assessment && b.assessment.checks)}
+    ${aligned ? `<p><strong>Aligned assessment:</strong> ${esc(aligned)}</p>` : ''}
   </article>`;
 }
 
@@ -91,10 +97,14 @@ const ta = (name, value, rows = 2) =>
 export function lessonEditHtml(doc) {
   const b = doc.body;
   const ranges = timeRanges(b.activities || []);
+  const cur = curriculumLabel(doc);
+  const standards = (b.standards || []).filter(s => String(s).trim());
+  const aligned = b.assessment && String(b.assessment.aligned || '').trim();
   return `<article class="sheet sheet-edit">
     ${ta('title', doc.title, 1)}
-    <p class="meta">${esc(gradeLabel(doc.grade))} ${esc(subjectLabel(doc).toLowerCase())}, ${esc(b.durationMin)} minutes</p>
+    <p class="meta">${esc(gradeLabel(doc.grade))} ${esc(subjectLabel(doc).toLowerCase())}, ${esc(b.durationMin)} minutes${cur ? `, ${esc(cur)}` : ''}</p>
     <h3>Learning objectives</h3>${ta('objectives', (b.objectives || []).join('\n'), 3)}
+    ${(cur || standards.length) ? `<h3>Curriculum standards</h3>${ta('standards', standards.join('\n'), 2)}` : ''}
     <h3>Materials</h3>${ta('materials', (b.materials || []).join('\n'), 2)}
     ${(b.activities || []).map((a, i) => `
       <h3><span class="mt">${esc(ranges[i] || '')}</span><span class="lab">${esc(a.title)}</span> <span class="min">${esc(a.minutes)} min</span></h3>
@@ -104,10 +114,13 @@ export function lessonEditHtml(doc) {
         <textarea class="field" data-track="${esc(t.level)}" data-title="${esc(t.title)}" rows="3">${esc(t.steps.join('\n'))}</textarea>`).join('')}`).join('')}
     <span data-duration="${esc(b.durationMin)}" hidden></span>
     <h3>Assessment</h3>${ta('checks', ((b.assessment && b.assessment.checks) || []).join('\n'), 2)}
+    ${(cur || aligned) ? `<label class="section-label">Aligned assessment</label>${ta('aligned', aligned || '', 2)}` : ''}
   </article>`;
 }
 
-// Reads the edit sheet back into a body the server re-validates.
+// Reads the edit sheet back into a body the server re-validates. The
+// standards fields only exist on plans written for a curriculum; when they
+// are absent the body stays exactly as it was before.
 export function readLessonEdit(root) {
   const val = name => (root.querySelector(`[data-f="${name}"]`) || {}).value;
   const lines = s => String(s || '').split('\n').map(x => x.trim()).filter(Boolean);
@@ -130,16 +143,18 @@ export function readLessonEdit(root) {
       steps: lines(el.value),
     }));
   }
-  return {
-    title: val('title'),
-    body: {
-      objectives: lines(val('objectives')),
-      materials: lines(val('materials')),
-      activities,
-      assessment: { checks: lines(val('checks')) },
-      durationMin: Number(root.querySelector('[data-duration]').dataset.duration),
-    },
+  const hasStandards = root.querySelector('[data-f="standards"]');
+  const hasAligned = root.querySelector('[data-f="aligned"]');
+  const body = {
+    objectives: lines(val('objectives')),
+    materials: lines(val('materials')),
+    activities,
+    assessment: { checks: lines(val('checks')) },
+    durationMin: Number(root.querySelector('[data-duration]').dataset.duration),
   };
+  if (hasStandards) body.standards = lines(val('standards'));
+  if (hasAligned) body.assessment.aligned = (val('aligned') || '').trim();
+  return { title: val('title'), body };
 }
 
 export function quizEditHtml(doc) {
