@@ -15,6 +15,17 @@ const prefs = {
 };
 let duration = 45;
 let topic = '';
+// The optional classroom context, remembered while the app is open.
+let studentCount = '';
+let tools = null;
+let differentiate = false;
+let contextOpen = false;
+const TOOL_CHOICES = [
+  ['whiteboard', 'Whiteboard only'],
+  ['handouts', 'Printed handouts'],
+  ['projector', 'Projector'],
+];
+const contextHasValues = () => studentCount !== '' || !!tools || differentiate;
 
 const chipsHtml = () => Object.entries(SUBJECTS).map(([k, s]) =>
   `<button type="button" class="chip ${s.cls} ${prefs.subject === k ? 'is-on' : ''}" data-subject="${k}"><i></i>${k === 'other' ? 'Other' : s.label}</button>`).join('');
@@ -43,6 +54,25 @@ function formHtml() {
     </div>
     <label class="section-label" for="l-topic">Topic</label>
     <input class="field mb-3" id="l-topic" placeholder="e.g. Fractions on a number line" maxlength="120" value="${esc(topic)}">
+    <button type="button" id="l-ctx-toggle" class="flex min-h-11 w-full items-center justify-between px-1 text-left font-medium text-fg" aria-expanded="${contextOpen || contextHasValues()}" aria-controls="l-ctx">
+      <span>Classroom context <span class="text-small font-normal text-muted">Optional</span></span>
+      <span class="${contextOpen || contextHasValues() ? 'rotate-180' : ''}" id="l-ctx-chev">${ICONS.chevron}</span>
+    </button>
+    <div id="l-ctx" class="mt-1" ${contextOpen || contextHasValues() ? '' : 'hidden'}>
+      <label class="section-label" for="l-students">Number of students</label>
+      <input class="field mb-3" id="l-students" type="number" inputmode="numeric" min="1" max="99" step="1" placeholder="e.g. 28" value="${esc(studentCount)}">
+      <span class="section-label" id="l-tools-label">Tools available</span>
+      <div class="seg seg-tall mb-3" role="group" aria-labelledby="l-tools-label">
+        ${TOOL_CHOICES.map(([k, label]) =>
+          `<button type="button" class="${tools === k ? 'is-on' : ''}" data-tools="${k}">${label}</button>`).join('')}
+      </div>
+      <label class="mb-3 flex min-h-11 items-center gap-3 px-1">
+        <input type="checkbox" id="l-diff" class="h-5 w-5 accent-accent" ${differentiate ? 'checked' : ''}>
+        <span class="text-body text-fg">Differentiate
+          <span class="block text-small text-muted">Support, Core and Challenge tracks in the main activity</span>
+        </span>
+      </label>
+    </div>
     <button id="l-write" class="btn-primary w-full">Write lesson plan</button>
     <p id="l-progress" class="mt-2 hidden text-center text-small text-muted">Writing your lesson plan…</p>
     <div id="l-error" class="mt-2" hidden></div>
@@ -163,6 +193,22 @@ function bindForm(view) {
     stepper.querySelector('output').textContent = `${duration} min`;
   });
   view.querySelector('#l-topic').addEventListener('input', e => { topic = e.target.value; });
+  const ctxToggle = view.querySelector('#l-ctx-toggle');
+  ctxToggle.addEventListener('click', () => {
+    contextOpen = !contextOpen;
+    ctxToggle.setAttribute('aria-expanded', String(contextOpen));
+    view.querySelector('#l-ctx-chev').classList.toggle('rotate-180', contextOpen);
+    view.querySelector('#l-ctx').hidden = !contextOpen;
+  });
+  view.querySelector('#l-students').addEventListener('input', e => { studentCount = e.target.value; });
+  const seg = view.querySelector('.seg-tall');
+  seg.addEventListener('click', e => {
+    const b = e.target.closest('[data-tools]');
+    if (!b) return;
+    tools = tools === b.dataset.tools ? null : b.dataset.tools;
+    seg.querySelectorAll('[data-tools]').forEach(x => x.classList.toggle('is-on', x.dataset.tools === tools));
+  });
+  view.querySelector('#l-diff').addEventListener('change', e => { differentiate = e.target.checked; });
   view.querySelector('#l-write').addEventListener('click', writePlan);
 }
 
@@ -175,6 +221,17 @@ async function writePlan() {
   topic = view.querySelector('#l-topic').value.trim();
   if (!prefs.subject) { errorBox.hidden = false; errorBox.innerHTML = '<p class="text-small text-muted">Pick a subject first.</p>'; return; }
   if (!topic) { errorBox.hidden = false; errorBox.innerHTML = '<p class="text-small text-muted">Type a topic first.</p>'; return; }
+  const studentsInput = view.querySelector('#l-students');
+  studentCount = studentsInput ? String(studentsInput.value).trim() : '';
+  let students;
+  if (studentCount !== '') {
+    students = Number(studentCount);
+    if (!Number.isInteger(students) || students < 1 || students > 99) {
+      errorBox.hidden = false;
+      errorBox.innerHTML = '<p class="text-small text-muted">Number of students is a whole number from 1 to 99.</p>';
+      return;
+    }
+  }
   errorBox.hidden = true;
   btn.disabled = true;
   progress.classList.remove('hidden');
@@ -182,6 +239,9 @@ async function writePlan() {
     kind: 'lesson', subject: prefs.subject, subjectName: prefs.subject === 'other' ? subjectName : undefined,
     grade: prefs.grade, topic, durationMin: duration,
   };
+  if (students !== undefined) body.studentCount = students;
+  if (tools) body.tools = tools;
+  if (differentiate) body.differentiate = true;
   try {
     const doc = await withAi(() => api('/api/documents/generate', { method: 'POST', body }));
     toast('Lesson plan saved');
@@ -225,6 +285,11 @@ async function lessonDetail(view, id) {
   editing = editing || pendingEditId === Number(id) || pendingEditId === id;
   pendingEditId = null;
   const s = SUBJECTS[doc.subject] || SUBJECTS.other;
+  // Differentiate was on but the tracks didn't come out: say so, and how to retry.
+  const main = (doc.body.activities || [])[1];
+  const tracksNote = doc.body.context && doc.body.context.differentiate && !(main && main.tracks)
+    ? `<p class="mx-4 mt-3 text-small text-muted" data-noprint>Differentiate was on, but the tracks didn't come out right, so this plan has one main activity. Use Write again to try for tracks.</p>`
+    : '';
   const tools = editing
     ? `<button class="btn-secondary" id="d-cancel">Cancel</button><button class="btn-primary" id="d-save">Save changes</button>`
     : `<button class="btn-secondary" id="d-pdf">${ICONS.print}Export PDF</button>
@@ -239,6 +304,7 @@ async function lessonDetail(view, id) {
     <div class="flex gap-2 px-3 pb-3 pt-1" data-noprint>${tools}</div>
     <div><span class="sheet-flag ${s.cls}">${s.icon}${esc(subjectLabel(doc))}</span></div>
     <div id="d-sheet">${editing ? lessonEditHtml(doc) : lessonSheetHtml(doc)}</div>
+    ${tracksNote}
     <p class="mx-4 mt-3 text-small text-muted" data-noprint>${esc(doc.source === 'ai'
       ? `Written with AI on ${fmtWhen(doc.created_at)}. Read it through before you teach it.`
       : 'Written by hand. Read it through before you teach it.')}</p>`;
@@ -291,11 +357,17 @@ async function writeAgain(doc, view) {
   });
   if (!ok) return;
   try {
+    const ctx = doc.body.context || {};
+    const context = {};
+    if (ctx.studentCount != null) context.studentCount = ctx.studentCount;
+    if (ctx.tools) context.tools = ctx.tools;
+    if (ctx.differentiate) context.differentiate = true;
     await withAi(() => api('/api/documents/generate', {
       method: 'POST',
       body: {
         kind: 'lesson', subject: doc.subject, subjectName: doc.subject_name,
         grade: doc.grade, topic: doc.topic, durationMin: doc.body.durationMin, replaceId: doc.id,
+        ...context,
       },
     }));
     toast('Lesson plan saved');

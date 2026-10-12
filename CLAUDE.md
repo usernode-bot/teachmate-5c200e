@@ -138,7 +138,7 @@ The kit is in `styles/tailwind-input.css`: colour tokens with a light and
 a dark value (named in `tailwind.config.js`), and components (`btn-primary`,
 `btn-secondary`, `field`, `list`/`list-row`, `card`, `section-label`,
 `skeleton`, `state-empty`, `state-error`, plus this app's `tabs`/`tab`,
-`chip`, `stepper`, `subj`, `sheet`, `sheet-flag`, `seg`).
+`chip`, `stepper`, `subj`, `sheet`, `sheet-flag`, `seg`, `seg-tall`).
 Re-theme by changing the token values there, keeping every text pair at
 4.5:1 or more in both looks.
 
@@ -173,6 +173,10 @@ Re-theme by changing the token values there, keeping every text pair at
   choice is 1 point each, four choices A to D.
 - Changing a quiz's answer key later does not re-grade scores already saved;
   the editor says so.
+- A lesson's classroom context (class size, tools, Differentiate) lives in
+  `body.context`; the three Support/Core/Challenge tracks are stored all
+  together or not at all, and a set that fails repair falls back to one
+  main activity with a note under the sheet.
 - The AI suggests marks and the teacher confirms them; nothing is a score
   until Save score. Grading the same student twice for one quiz and class
   asks to replace.
