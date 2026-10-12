@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { normalizeLesson, normalizeQuiz, normalizeReading } = require('../lib/normalize');
+const { normalizeLesson, normalizeQuiz, normalizeReading, cleanContext } = require('../lib/normalize');
 
 const lessonInput = { topic: 'The water cycle', durationMin: 45 };
 const goodLesson = {
@@ -76,6 +76,67 @@ test('a reading with bad letters becomes null', () => {
   assert.equal(reading.mc[0].clear, false);
   assert.equal(reading.mc[1].letter, 'C');
   assert.equal(reading.essay[0].level, 1);
+});
+
+// ── Classroom context and differentiation tracks ───────────────────────────
+const trackedInput = { topic: 'The water cycle', durationMin: 45, studentCount: 24, tools: 'handouts', differentiate: true };
+const tracks = [
+  { level: 'support', title: 'With a guide', steps: ['Follow the card'] },
+  { level: 'core', title: 'On grade', steps: ['Build it', 'Sketch it'] },
+  { level: 'challenge', title: 'Extension', steps: ['Change one thing'] },
+];
+
+test('three valid tracks are kept in Support, Core, Challenge order', () => {
+  const raw = structuredClone(goodLesson);
+  raw.activities[1].tracks = [...tracks].reverse();
+  raw.activities[1].steps = ['Set up the cups'];
+  const out = normalizeLesson(raw, trackedInput);
+  const main = out.body.activities[1];
+  assert.deepEqual(main.tracks.map(t => t.level), ['support', 'core', 'challenge']);
+  assert.deepEqual(main.tracks.map(t => t.title), ['With a guide', 'On grade', 'Extension']);
+  const sum = out.body.activities.reduce((s, a) => s + a.minutes, 0);
+  assert.equal(sum, 45);
+  assert.deepEqual(out.body.context, { studentCount: 24, tools: 'handouts', differentiate: true });
+});
+
+test('a track with no steps drops the whole set, main steps kept', () => {
+  const raw = structuredClone(goodLesson);
+  raw.activities[1].tracks = tracks.map(t => ({ ...t }));
+  raw.activities[1].tracks[0].steps = [];
+  const out = normalizeLesson(raw, trackedInput);
+  const main = out.body.activities[1];
+  assert.equal(main.tracks, undefined);
+  assert.deepEqual(main.steps, ['Demo', 'Pair work']);
+});
+
+test('main steps empty with valid tracks: kept; with broken tracks: core steps used', () => {
+  const raw = structuredClone(goodLesson);
+  raw.activities[1].steps = [];
+  raw.activities[1].tracks = tracks;
+  const kept = normalizeLesson(raw, trackedInput);
+  assert.equal(kept.body.activities[1].tracks.length, 3);
+  assert.deepEqual(kept.body.activities[1].steps, []);
+
+  const broken = structuredClone(raw);
+  broken.activities[1].tracks = tracks.slice(0, 2);
+  const fallback = normalizeLesson(broken, trackedInput);
+  assert.equal(fallback.body.activities[1].tracks, undefined);
+  assert.deepEqual(fallback.body.activities[1].steps, ['Build it', 'Sketch it']);
+
+  const none = structuredClone(raw);
+  none.activities[1].tracks = [{ level: 'support', title: 'S', steps: ['x'] }];
+  assert.throws(() => normalizeLesson(none, trackedInput), /bad steps/);
+});
+
+test('cleanContext drops a bad tool and an out-of-range count; empty is null', () => {
+  assert.deepEqual(cleanContext({ studentCount: 30, tools: 'projector' }),
+    { studentCount: 30, tools: 'projector', differentiate: false });
+  assert.deepEqual(cleanContext({ studentCount: 100, tools: 'paper', differentiate: true }),
+    { studentCount: null, tools: null, differentiate: true });
+  assert.equal(cleanContext({ studentCount: 'x' }), null);
+  assert.equal(cleanContext({}), null);
+  const out = normalizeLesson(goodLesson, lessonInput);
+  assert.equal('context' in out.body, false);
 });
 
 test('a plan without a curriculum has no standards key and no aligned', () => {

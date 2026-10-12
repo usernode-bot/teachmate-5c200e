@@ -291,6 +291,19 @@
     font: 600 0.875rem/28px system-ui, sans-serif;
     color: rgb(var(--mark));
   }
+  /* Differentiation track labels, in the same red pen as the margin
+     timings but written on the line: "Challenge" is too wide for the margin. */
+  .sheet h4.trk-h {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 28px;
+    margin: 0;
+  }
+  .sheet .trk {
+    font: 600 0.875rem/28px system-ui, sans-serif;
+    color: rgb(var(--mark));
+    margin-right: 6px;
+  }
   /* Fields on the sheet, for edit mode and hand-entered answers. */
   .sheet .field {
     background: transparent;
@@ -314,6 +327,11 @@
   }
   .seg .is-on {
     @apply bg-surface font-semibold text-fg shadow-sm;
+  }
+  /* The taller segmented control on the lesson form, so its three labels
+     wrap and stay easy to tap at 360 px. */
+  .seg-tall button {
+    @apply min-h-11 text-center leading-tight;
   }
 }
 

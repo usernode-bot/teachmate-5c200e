@@ -54,3 +54,14 @@ test('student names are the made-up alliterative list', () => {
   assert.ok(names.every(n => /^[A-Z][a-z]+ [A-Z][a-z]+$/.test(n)), names.join(', '));
   assert.ok(new Set(names).size === 17);
 });
+
+const { demoLesson } = require('../lib/demo');
+
+test('the water cycle demo lesson is differentiated with its context', () => {
+  const out = demoLesson(LESSONS.find(l => l.key === 'lesson-water-cycle'));
+  const main = out.body.activities[1];
+  assert.deepEqual(main.tracks.map(t => t.level), ['support', 'core', 'challenge']);
+  assert.deepEqual(out.body.context, { studentCount: 24, tools: 'handouts', differentiate: true });
+  const sum = out.body.activities.reduce((s, a) => s + a.minutes, 0);
+  assert.equal(sum, 45);
+});

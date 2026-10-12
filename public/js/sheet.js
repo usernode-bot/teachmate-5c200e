@@ -5,6 +5,8 @@ import { esc, toast } from './app.js';
 import { gradeLabel, subjectLabel, curriculumLabel } from './icons.js';
 
 const RUBRIC_LEVELS = ['Excellent', 'Good', 'Developing', 'Beginning'];
+const TRACK_NAMES = { support: 'Support', core: 'Core', challenge: 'Challenge' };
+const TOOL_WORDS = { whiteboard: 'whiteboard only', handouts: 'printed handouts', projector: 'projector' };
 
 // Cumulative minute ranges for the margin: 0–5, 5–35, 35–45.
 function timeRanges(activities) {
@@ -25,15 +27,24 @@ export function lessonSheetHtml(doc) {
     return ordered ? `<ol>${rows.map(s => `<li>${esc(s)}</li>`).join('')}</ol>`
       : `<ul>${rows.map(s => `<li>${esc(s)}</li>`).join('')}</ul>`;
   };
+  const tracks = a => (a.tracks || []).map(t => `
+    <h4 class="trk-h"><span class="trk">${esc(TRACK_NAMES[t.level] || t.level)}</span>${esc(t.title)}</h4>
+    ${list(t.steps, true)}`).join('');
   const phase = (a, i) => a && `
     <h3><span class="mt">${esc(ranges[i] || '')}</span>${esc(a.title)}</h3>
-    ${list(a.steps, true)}`;
+    ${list(a.steps, true)}
+    ${tracks(a)}`;
+  const ctx = b.context || {};
+  const meta = [`${esc(b.durationMin)} minutes`];
+  if (ctx.studentCount != null) meta.push(`${esc(ctx.studentCount)} students`);
+  if (ctx.tools && TOOL_WORDS[ctx.tools]) meta.push(TOOL_WORDS[ctx.tools]);
   const cur = curriculumLabel(doc);
+  if (cur) meta.push(esc(cur));
   const standards = (b.standards || []).filter(s => String(s).trim());
   const aligned = b.assessment && String(b.assessment.aligned || '').trim();
   return `<article class="sheet">
     <h2 class="sheet-title">${esc(doc.title)}</h2>
-    <p class="meta">${esc(gradeLabel(doc.grade))} ${esc(subjectLabel(doc).toLowerCase())}, ${esc(b.durationMin)} minutes${cur ? `, ${esc(cur)}` : ''}</p>
+    <p class="meta">${esc(gradeLabel(doc.grade))} ${esc(subjectLabel(doc).toLowerCase())}, ${meta.join(', ')}</p>
     <h3>Learning objectives</h3>${list(b.objectives)}
     ${standards.length ? `<h3>Curriculum standards</h3>${list(standards)}` : ''}
     ${b.materials && b.materials.filter(s => String(s).trim()).length ? `<h3>Materials</h3>${list(b.materials)}` : ''}
@@ -97,7 +108,10 @@ export function lessonEditHtml(doc) {
     <h3>Materials</h3>${ta('materials', (b.materials || []).join('\n'), 2)}
     ${(b.activities || []).map((a, i) => `
       <h3><span class="mt">${esc(ranges[i] || '')}</span><span class="lab">${esc(a.title)}</span> <span class="min">${esc(a.minutes)} min</span></h3>
-      <textarea class="field" data-f="steps:${i}" data-phase="${esc(a.phase)}" data-title="${esc(a.title)}" data-min="${esc(a.minutes)}" data-i="${i}" rows="3">${esc(a.steps.join('\n'))}</textarea>`).join('')}
+      <textarea class="field" data-f="steps:${i}" data-phase="${esc(a.phase)}" data-title="${esc(a.title)}" data-min="${esc(a.minutes)}" data-i="${i}" rows="3">${esc(a.steps.join('\n'))}</textarea>
+      ${(a.tracks || []).map(t => `
+        <h4 class="trk-h"><span class="trk">${esc(TRACK_NAMES[t.level] || t.level)}</span>${esc(t.title)}</h4>
+        <textarea class="field" data-track="${esc(t.level)}" data-title="${esc(t.title)}" rows="3">${esc(t.steps.join('\n'))}</textarea>`).join('')}`).join('')}
     <span data-duration="${esc(b.durationMin)}" hidden></span>
     <h3>Assessment</h3>${ta('checks', ((b.assessment && b.assessment.checks) || []).join('\n'), 2)}
     ${(cur || aligned) ? `<label class="section-label">Aligned assessment</label>${ta('aligned', aligned || '', 2)}` : ''}
@@ -119,6 +133,16 @@ export function readLessonEdit(root) {
       steps: lines(val(`steps:${el.dataset.i}`)),
     });
   });
+  // Track boxes belong to the main activity; the server re-validates them.
+  const trackEls = [...root.querySelectorAll('[data-track]')];
+  if (trackEls.length) {
+    const main = activities.find(a => a.phase === 'main');
+    if (main) main.tracks = trackEls.map(el => ({
+      level: el.dataset.track,
+      title: el.dataset.title,
+      steps: lines(el.value),
+    }));
+  }
   const hasStandards = root.querySelector('[data-f="standards"]');
   const hasAligned = root.querySelector('[data-f="aligned"]');
   const body = {
