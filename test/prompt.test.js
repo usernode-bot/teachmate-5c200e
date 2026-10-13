@@ -18,6 +18,14 @@ test('a Common Core prompt names the standards and asks for codes', () => {
   assert.ok(text.includes('Never invent a code'));
 });
 
+test('a K13 prompt names Kurikulum 2013 and asks for codes', () => {
+  const text = lessonPrompt({ ...input, curriculum: 'k13' });
+  assert.ok(text.includes('Kurikulum 2013'));
+  assert.ok(text.includes('"standards"'));
+  assert.ok(text.includes('"aligned"'));
+  assert.ok(text.includes('Never invent a code'));
+});
+
 test('an Other prompt uses the typed curriculum name', () => {
   const text = lessonPrompt({ ...input, curriculum: 'other', curriculumName: 'National Curriculum for England' });
   assert.ok(text.includes('Align the plan to National Curriculum for England'));

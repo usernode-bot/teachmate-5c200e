@@ -57,6 +57,7 @@ export function subjectLabel(doc) {
 export const CURRICULA = {
   general: 'General',
   merdeka: 'Kurikulum Merdeka',
+  k13: 'K13 (Kurikulum 2013)',
   ccss: 'Common Core',
   cambridge: 'Cambridge',
   ib: 'IB',
