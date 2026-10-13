@@ -70,6 +70,11 @@
   [hidden]:where(:not([hidden="until-found"])) {
     display: none !important;
   }
+  /* Clear the phone's navigation bar: the frame runs edge to edge, and the
+     bridge forwards the inset because env() reads 0 inside the iframe. */
+  #view {
+    padding-bottom: calc(2.5rem + var(--un-safe-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  }
 }
 
 /* ── Components ─────────────────────────────────────────────────────────── */
