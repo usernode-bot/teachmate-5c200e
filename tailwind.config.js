@@ -66,6 +66,10 @@ module.exports = {
         'subj-sci': token('subj-sci'),
         'subj-soc': token('subj-soc'),
         'subj-art': token('subj-art'),
+        'subj-nat': token('subj-nat'),
+        'subj-civ': token('subj-civ'),
+        'subj-rel': token('subj-rel'),
+        'subj-loc': token('subj-loc'),
         'subj-other': token('subj-other'),
       },
       fontFamily: {

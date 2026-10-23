@@ -39,10 +39,10 @@ export const SUBJECTS = {
   sci: { label: 'Science', cls: 's-sci', icon: SUBJ_ICONS.sci },
   soc: { label: 'Social studies', cls: 's-soc', icon: SUBJ_ICONS.soc },
   art: { label: 'Arts', cls: 's-art', icon: SUBJ_ICONS.art },
-  nat: { label: 'National language', cls: 's-other', icon: SUBJ_ICONS.nat },
-  civ: { label: 'Civics', cls: 's-other', icon: SUBJ_ICONS.civ },
-  rel: { label: 'Religion', cls: 's-other', icon: SUBJ_ICONS.rel },
-  loc: { label: 'Local language', cls: 's-other', icon: SUBJ_ICONS.loc },
+  nat: { label: 'National language', cls: 's-nat', icon: SUBJ_ICONS.nat },
+  civ: { label: 'Civics', cls: 's-civ', icon: SUBJ_ICONS.civ },
+  rel: { label: 'Religion', cls: 's-rel', icon: SUBJ_ICONS.rel },
+  loc: { label: 'Local language', cls: 's-loc', icon: SUBJ_ICONS.loc },
   other: { label: 'Other', cls: 's-other', icon: SUBJ_ICONS.other },
 };
 
