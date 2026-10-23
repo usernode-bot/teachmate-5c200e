@@ -10,7 +10,9 @@
     "suggested_daily_cap_cents": 200
   },
   "tests": [
-    { "name": "Lessons, empty account", "path": "/", "expectText": "No lesson plans yet" },
+    { "name": "Lessons, empty account", "path": "/", "expectText": "Start your first lesson plan in 1 minute" },
+    { "name": "Lessons, empty account examples", "path": "/", "expectSelector": "[data-sample]" },
+    { "name": "Lessons demo cards", "path": "/?demo=1", "expectSelector": "#l-list [data-act='quiz']" },
     { "name": "Lessons demo", "id": "lessons.demo", "path": "/?demo=1", "expectText": "Staging demo", "visual": true, "impact": ["public/**", "styles/**", "server.js", "lib/**"] },
     { "name": "Quizzes demo", "path": "/?demo=1#/quizzes", "expectText": "Water cycle quiz" },
     { "name": "Grade form", "path": "/?demo=1#/grade", "expectSelector": "#grade-form" },

@@ -17,6 +17,10 @@ export const ICONS = {
   pencil: svg('<path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19l-4 1z"/>', 'h-5 w-5'),
 };
 
+// The small open notebook in the Lessons empty state: sheet-blue rules and a
+// red margin line, drawn in the app rather than shipped as a picture.
+export const NOTEBOOK = `<svg viewBox="0 0 48 48" class="h-20 w-20 text-muted" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 13c-5-3-11-4-17-3v26c6-1 12 0 17 3"/><path d="M24 13c5-3 11-4 17-3v26c-6-1-12 0-17 3"/><path d="M24 13v26"/><g class="text-rule"><path d="M14 18h7M14 23h7M14 28h7M28 18h8M28 23h8M28 28h6"/></g><path class="text-mark" d="M11 12v23"/></svg>`;
+
 const SUBJ_ICONS = {
   math: svg('<path d="M4 7h6M7 4v6M14 7h6M15 15l4 4M19 15l-4 4M4 17h6"/>', 'h-6 w-6'),
   ela: svg('<path d="M3 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H3z"/><path d="M21 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7z"/>', 'h-6 w-6'),

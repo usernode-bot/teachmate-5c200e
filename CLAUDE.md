@@ -136,7 +136,8 @@ changes the look on purpose.
 
 The kit is in `styles/tailwind-input.css`: colour tokens with a light and
 a dark value (named in `tailwind.config.js`), and components (`btn-primary`,
-`btn-secondary`, `field`, `list`/`list-row`, `card`, `section-label`,
+`btn-secondary`, `field`, `list`/`list-row`, `card`, `card-raised`,
+`section-label`,
 `skeleton`, `state-empty`, `state-error`, plus this app's `tabs`/`tab`,
 `chip`, `stepper`, `subj`, `sheet`, `sheet-flag`, `seg`, `seg-tall`).
 Re-theme by changing the token values there, keeping every text pair at
@@ -155,6 +156,9 @@ Re-theme by changing the token values there, keeping every text pair at
 - Seed obviously fake staging demo data so the populated screen can be seen
   ("Staging mock data" in the platform conventions).
 - No cards in cards, no uppercase eyebrows, no emoji as icons.
+- The New lesson plan form card is the app's one raised surface: a soft
+  shadow (`card-raised`, drawn from the `fg` token) in the light look, and
+  border only in the dark look, where a lighter surface already shows depth.
 
 ## App-specific conventions
 

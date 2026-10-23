@@ -2,10 +2,10 @@
 // detail on the notebook sheet.
 
 import {
-  api, esc, fmtWhen, navigate, register, skeletons, stateEmpty, stateError,
+  api, esc, fmtWhen, navigate, register, skeletons, stateError,
   toast, confirmDialog, AI_MESSAGES, withAi,
 } from './app.js';
-import { ICONS, SUBJECTS, CURRICULA, gradeLabel, subjectTile, subjectLabel, curriculumLabel } from './icons.js';
+import { ICONS, NOTEBOOK, SUBJECTS, CURRICULA, gradeLabel, subjectTile, subjectLabel, curriculumLabel } from './icons.js';
 import { lessonSheetHtml, lessonEditHtml, readLessonEdit, exportPdf } from './sheet.js';
 
 // The form starts where the teacher last left it. A stale curriculum value
@@ -29,24 +29,38 @@ const TOOL_CHOICES = [
 ];
 const contextHasValues = () => studentCount !== '' || !!tools || differentiate;
 
+// The examples in the empty state: tapping one only fills the form.
+const SAMPLES = [
+  { subject: 'math', grade: '5', duration: 45, topic: 'Fractions on a number line' },
+  { subject: 'ela', grade: '2', duration: 30, topic: 'Story sequencing' },
+  { subject: 'sci', grade: '3', duration: 45, topic: 'Plant life cycle' },
+];
+
+// What a list row or a copied summary calls a plan: "Math, Grade 5, 45 min".
+const metaLine = d => [subjectLabel(d), d.grade ? gradeLabel(d.grade) : '', `${d.duration_min} min`]
+  .filter(Boolean).join(', ');
+
+// The topic is only worth its own line when it is not the title again.
+const topicIsTitle = d => !d.topic || d.topic.trim().toLowerCase() === String(d.title || '').trim().toLowerCase();
+
 const chipsHtml = () => Object.entries(SUBJECTS).map(([k, s]) =>
   `<button type="button" class="chip ${s.cls} ${prefs.subject === k ? 'is-on' : ''}" data-subject="${k}"><i></i>${k === 'other' ? 'Other' : s.label}</button>`).join('');
 
 function formHtml() {
   const gradeOptions = ['K', ...Array.from({ length: 12 }, (_, i) => String(i + 1))]
     .map(g => `<option value="${g}" ${prefs.grade === g ? 'selected' : ''}>${g === 'K' ? 'Kindergarten' : 'Grade ' + g}</option>`).join('');
-  return `<section class="card mx-4 mt-3" data-noprint>
+  return `<section class="card card-raised mx-4 mt-3" id="l-form" data-noprint>
     <h2 class="mb-3 font-display text-heading font-semibold">New lesson plan</h2>
-    <label class="section-label" for="l-subject-chips">Subject</label>
+    <label class="section-label text-fg" for="l-subject-chips">Subject</label>
     <div class="mb-3 flex flex-wrap gap-2" id="l-subject-chips">${chipsHtml()}</div>
     ${prefs.subject === 'other' ? `<input class="field mb-3" id="l-subject-name" placeholder="e.g. Spanish" maxlength="40">` : ''}
     <div class="mb-3 grid grid-cols-2 gap-3">
       <div>
-        <label class="section-label" for="l-grade">Grade</label>
+        <label class="section-label text-fg" for="l-grade">Grade</label>
         <select class="field" id="l-grade">${gradeOptions}</select>
       </div>
       <div>
-        <label class="section-label" for="l-duration">Class length</label>
+        <label class="section-label text-fg" for="l-duration">Class length</label>
         <div class="stepper" id="l-duration">
           <button type="button" data-d="-1" aria-label="Shorter">${ICONS.minus}</button>
           <output>${duration} min</output>
@@ -55,22 +69,22 @@ function formHtml() {
       </div>
     </div>
     <div class="mb-3">
-      <label class="section-label" for="l-curriculum">Curriculum</label>
+      <label class="section-label text-fg" for="l-curriculum">Curriculum</label>
       <select class="field" id="l-curriculum">${Object.entries(CURRICULA)
         .map(([k, label]) => `<option value="${k}" ${prefs.curriculum === k ? 'selected' : ''}>${label}</option>`).join('')}</select>
     </div>
-    ${prefs.curriculum === 'other' ? `<label class="section-label" for="l-curriculum-name">Curriculum name</label>
+    ${prefs.curriculum === 'other' ? `<label class="section-label text-fg" for="l-curriculum-name">Curriculum name</label>
     <input class="field mb-3" id="l-curriculum-name" placeholder="e.g. National Curriculum for England" maxlength="60">` : ''}
-    <label class="section-label" for="l-topic">Topic</label>
+    <label class="section-label text-fg" for="l-topic">Topic</label>
     <input class="field mb-3" id="l-topic" placeholder="e.g. Fractions on a number line" maxlength="120" value="${esc(topic)}">
     <button type="button" id="l-ctx-toggle" class="flex min-h-11 w-full items-center justify-between px-1 text-left font-medium text-fg" aria-expanded="${contextOpen || contextHasValues()}" aria-controls="l-ctx">
-      <span>Classroom context <span class="text-small font-normal text-muted">Optional</span></span>
+      <span>Classroom context <span class="ml-2 rounded-full border border-line px-2 text-small font-normal text-muted">Optional</span></span>
       <span class="${contextOpen || contextHasValues() ? 'rotate-180' : ''}" id="l-ctx-chev">${ICONS.chevron}</span>
     </button>
     <div id="l-ctx" class="mt-1" ${contextOpen || contextHasValues() ? '' : 'hidden'}>
-      <label class="section-label" for="l-students">Number of students</label>
+      <label class="section-label text-fg" for="l-students">Number of students</label>
       <input class="field mb-3" id="l-students" type="number" inputmode="numeric" min="1" max="99" step="1" placeholder="e.g. 28" value="${esc(studentCount)}">
-      <span class="section-label" id="l-tools-label">Tools available</span>
+      <span class="section-label text-fg" id="l-tools-label">Tools available</span>
       <div class="seg seg-tall mb-3" role="group" aria-labelledby="l-tools-label">
         ${TOOL_CHOICES.map(([k, label]) =>
           `<button type="button" class="${tools === k ? 'is-on' : ''}" data-tools="${k}">${label}</button>`).join('')}
@@ -89,15 +103,100 @@ function formHtml() {
 }
 
 function rowHtml(d) {
-  const sub = d.grade ? `${d.grade === 'K' ? 'Kindergarten' : 'Grade ' + d.grade} ${subjectLabel(d).toLowerCase()}` : subjectLabel(d);
-  return `<li class="list-row" data-id="${d.id}">
-    ${subjectTile(d)}
-    <div class="min-w-0 flex-1">
-      <div class="truncate font-semibold">${esc(d.title)}</div>
-      <div class="text-small text-muted">${esc(sub)}, ${esc(d.duration_min)} min</div>
+  const topicLine = topicIsTitle(d) ? '' :
+    `<div class="truncate text-small text-muted">Topic: ${esc(d.topic.trim())}</div>`;
+  return `<li class="card" data-id="${d.id}">
+    <div class="flex items-start gap-3">
+      ${subjectTile(d)}
+      <div class="min-w-0 flex-1">
+        <div class="truncate font-semibold">${esc(d.title)}</div>
+        <div class="text-small text-muted">${esc(metaLine(d))}</div>
+        ${topicLine}
+      </div>
+      <span class="text-small text-muted">${fmtWhen(d.created_at)}</span>
     </div>
-    <span class="text-small text-muted">${fmtWhen(d.created_at)}</span>
+    <div class="mt-3 flex gap-2">
+      <button type="button" class="btn-secondary px-3" data-act="copy" aria-label="${esc(`Copy ${d.title}`)}">Copy</button>
+      <button type="button" class="btn-secondary px-3" data-act="share" aria-label="${esc(`Share ${d.title}`)}">Share</button>
+      <button type="button" class="btn-secondary flex-1" data-act="quiz" aria-label="${esc(`Make a quiz from ${d.title}`)}">Make a quiz</button>
+    </div>
   </li>`;
+}
+
+// The plain text Copy and Share hand over: no HTML, nothing leaves the app
+// unless the teacher pastes or shares it.
+function summaryText(d) {
+  return [d.title, metaLine(d), topicIsTitle(d) ? '' : `Topic: ${d.topic.trim()}`]
+    .filter(Boolean).join('\n');
+}
+
+function copySummary(text, message) {
+  const fail = () => toast("Couldn't copy that. Try again.");
+  try {
+    const written = navigator.clipboard && navigator.clipboard.writeText(text);
+    if (!written || !written.then) return fail();
+    written.then(() => toast(message)).catch(fail);
+  } catch { fail(); }
+}
+
+// Share uses the phone's own sheet where the frame offers one, and otherwise
+// copies the summary. There is no public link.
+async function shareSummary(d) {
+  const text = summaryText(d);
+  const data = { title: d.title, text };
+  if (!navigator.share) return copySummary(text, 'Copied, ready to share');
+  try {
+    if (navigator.canShare && !navigator.canShare(data)) return copySummary(text, 'Copied, ready to share');
+    await navigator.share(data);
+  } catch (err) {
+    if (err && err.name === 'AbortError') return;
+    copySummary(text, 'Copied, ready to share');
+  }
+}
+
+function rowAction(act, d) {
+  if (act === 'copy') copySummary(summaryText(d), 'Copied');
+  else if (act === 'share') shareSummary(d);
+  else if (act === 'quiz') navigate(`#/quizzes?from=${d.id}`);
+}
+
+// Tapping an example fills the form only; nothing is written until Write.
+function fillFromSample(view, index) {
+  const sample = SAMPLES[index];
+  const write = view.querySelector('#l-write');
+  if (!sample || (write && write.disabled)) return;
+  prefs.subject = sample.subject;
+  prefs.grade = sample.grade;
+  localStorage.setItem('tm.subject', prefs.subject);
+  localStorage.setItem('tm.grade', prefs.grade);
+  duration = sample.duration;
+  topic = sample.topic;
+  const form = view.querySelector('#l-form');
+  if (!form) return;
+  form.outerHTML = formHtml();
+  bindForm(view);
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  view.querySelector('#l-form').scrollIntoView({ block: 'start', behavior: reduced ? 'auto' : 'smooth' });
+}
+
+const sampleRow = (s, i) => `<li>
+    <button type="button" class="list-row w-full text-left" data-sample="${i}">
+      ${subjectTile({ subject: s.subject })}
+      <span class="min-w-0 flex-1">
+        <span class="block truncate font-semibold text-fg">${esc(s.topic)}</span>
+        <span class="block text-small text-muted">${esc(metaLine({ subject: s.subject, grade: s.grade, duration_min: s.duration }))}</span>
+      </span>
+    </button>
+  </li>`;
+
+function emptyHtml() {
+  return `<div class="state-empty text-muted">
+      ${NOTEBOOK}
+      <p class="text-body font-semibold text-fg">Start your first lesson plan in 1 minute</p>
+      <p class="text-small">Fill in the form above, or tap an example to start from it.</p>
+    </div>
+    <h3 class="section-label">Try an example</h3>
+    <ul class="list">${SAMPLES.map(sampleRow).join('')}</ul>`;
 }
 
 async function lessonsScreen(view) {
@@ -119,15 +218,15 @@ async function lessonsScreen(view) {
 function renderList(view, docs) {
   const lower = view.querySelector('#l-lower');
   if (!lower) return;
-  const show = (rows, count, empty) => {
+  const show = (rows, count) => {
     lower.innerHTML = count
       ? `<div class="mb-2 flex items-baseline justify-between px-1">
           <h2 class="font-display text-heading font-semibold">Your lesson plans</h2>
           <span class="text-small text-muted">${count} plan${count === 1 ? '' : 's'}</span>
         </div>
         <input class="field mb-2" id="l-search" placeholder="Search your lesson plans" autocomplete="off" value="${esc(view.dataset.q || '')}">
-        <ul class="list" id="l-list">${rows}</ul>`
-      : stateEmpty('No lesson plans yet', 'Pick a subject and a topic above, then write your first one.');
+        <ul class="flex flex-col gap-3" id="l-list">${rows}</ul>`
+      : emptyHtml();
     const search = lower.querySelector('#l-search');
     if (search) {
       search.addEventListener('input', () => {
@@ -140,14 +239,24 @@ function renderList(view, docs) {
       });
     }
     attachSwipe(lower);
-    lower.addEventListener('click', e => {
-      const row = e.target.closest('.list-row');
-      if (row) navigate(`#/lessons/${row.dataset.id}`);
-    });
   };
   view.dataset.count = String(docs.length);
   applyFilter.docs = docs;
   applyFilter.show = show;
+  // Bound once on the container, which survives every re-render below it.
+  lower.addEventListener('click', e => {
+    const sample = e.target.closest('[data-sample]');
+    if (sample) { fillFromSample(view, Number(sample.dataset.sample)); return; }
+    const act = e.target.closest('#l-list [data-act]');
+    if (act) {
+      const li = act.closest('[data-id]');
+      const d = (applyFilter.docs || []).find(x => String(x.id) === (li && li.dataset.id));
+      if (d) rowAction(act.dataset.act, d);
+      return;
+    }
+    const row = e.target.closest('#l-list [data-id]');
+    if (row) navigate(`#/lessons/${row.dataset.id}`);
+  });
   applyFilter(docs);
 }
 
@@ -161,7 +270,7 @@ function applyFilter(docs) {
 
 function attachSwipe(lower) {
   if (!window.unNative || !unNative.attachSwipeActions) return;
-  lower.querySelectorAll('#l-list .list-row').forEach(row => {
+  lower.querySelectorAll('#l-list > li').forEach(row => {
     const id = Number(row.dataset.id);
     unNative.attachSwipeActions(row, {
       actions: [{
