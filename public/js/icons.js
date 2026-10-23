@@ -14,6 +14,8 @@ export const ICONS = {
   minus: svg('<path d="M5 12h14"/>', 'h-5 w-5'),
   chevron: svg('<path d="M6 9l6 6 6-6"/>', 'h-5 w-5'),
   camera: svg('<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/>', 'h-5 w-5'),
+  copy: svg('<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>', 'h-5 w-5'),
+  share: svg('<path d="M12 15V4M8 8l4-4 4 4M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/>', 'h-5 w-5'),
   pencil: svg('<path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19l-4 1z"/>', 'h-5 w-5'),
 };
 

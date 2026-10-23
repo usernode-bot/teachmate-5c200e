@@ -2,11 +2,11 @@
 // detail on the notebook sheet.
 
 import {
-  api, esc, fmtWhen, navigate, register, skeletons, stateEmpty, stateError,
+  api, esc, fmtWhen, navigate, register, skeletons, stateError,
   toast, confirmDialog, AI_MESSAGES, withAi,
 } from './app.js';
 import { ICONS, SUBJECTS, CURRICULA, gradeLabel, subjectTile, subjectLabel, curriculumLabel } from './icons.js';
-import { lessonSheetHtml, lessonEditHtml, readLessonEdit, exportPdf } from './sheet.js';
+import { lessonSheetHtml, lessonEditHtml, readLessonEdit, exportPdf, lessonText } from './sheet.js';
 
 // The form starts where the teacher last left it. A stale curriculum value
 // falls back to General.
@@ -27,6 +27,12 @@ const TOOL_CHOICES = [
   ['handouts', 'Printed handouts'],
   ['projector', 'Projector'],
 ];
+// The tappable examples on the empty state: each fills in the form.
+const EXAMPLES = [
+  { subject: 'math', grade: '5', duration: 45, topic: 'Fractions on a number line' },
+  { subject: 'sci', grade: '4', duration: 40, topic: 'The water cycle' },
+  { subject: 'ela', grade: '7', duration: 50, topic: 'Writing a strong opening line' },
+];
 const contextHasValues = () => studentCount !== '' || !!tools || differentiate;
 
 const chipsHtml = () => Object.entries(SUBJECTS).map(([k, s]) =>
@@ -35,7 +41,7 @@ const chipsHtml = () => Object.entries(SUBJECTS).map(([k, s]) =>
 function formHtml() {
   const gradeOptions = ['K', ...Array.from({ length: 12 }, (_, i) => String(i + 1))]
     .map(g => `<option value="${g}" ${prefs.grade === g ? 'selected' : ''}>${g === 'K' ? 'Kindergarten' : 'Grade ' + g}</option>`).join('');
-  return `<section class="card mx-4 mt-3" data-noprint>
+  return `<section class="card card-soft mx-4 mt-3" id="l-form" data-noprint>
     <h2 class="mb-3 font-display text-heading font-semibold">New lesson plan</h2>
     <label class="section-label" for="l-subject-chips">Subject</label>
     <div class="mb-3 flex flex-wrap gap-2" id="l-subject-chips">${chipsHtml()}</div>
@@ -64,7 +70,7 @@ function formHtml() {
     <label class="section-label" for="l-topic">Topic</label>
     <input class="field mb-3" id="l-topic" placeholder="e.g. Fractions on a number line" maxlength="120" value="${esc(topic)}">
     <button type="button" id="l-ctx-toggle" class="flex min-h-11 w-full items-center justify-between px-1 text-left font-medium text-fg" aria-expanded="${contextOpen || contextHasValues()}" aria-controls="l-ctx">
-      <span>Classroom context <span class="text-small font-normal text-muted">Optional</span></span>
+      <span class="flex items-center gap-2"><span class="text-small font-semibold">Classroom context</span><span class="rounded-full bg-raised px-2 py-0.5 text-small font-medium text-muted">Optional</span></span>
       <span class="${contextOpen || contextHasValues() ? 'rotate-180' : ''}" id="l-ctx-chev">${ICONS.chevron}</span>
     </button>
     <div id="l-ctx" class="mt-1" ${contextOpen || contextHasValues() ? '' : 'hidden'}>
@@ -88,16 +94,118 @@ function formHtml() {
   </section>`;
 }
 
-function rowHtml(d) {
-  const sub = d.grade ? `${d.grade === 'K' ? 'Kindergarten' : 'Grade ' + d.grade} ${subjectLabel(d).toLowerCase()}` : subjectLabel(d);
-  return `<li class="list-row" data-id="${d.id}">
-    ${subjectTile(d)}
-    <div class="min-w-0 flex-1">
-      <div class="truncate font-semibold">${esc(d.title)}</div>
-      <div class="text-small text-muted">${esc(sub)}, ${esc(d.duration_min)} min</div>
+function cardHtml(d) {
+  return `<li class="card card-soft p-0" data-id="${d.id}">
+    <div class="flex items-center gap-3 px-4 pb-2 pt-3">
+      ${subjectTile(d)}
+      <div class="min-w-0 flex-1">
+        <div class="text-small text-muted">${esc(subjectLabel(d))}</div>
+        <div class="truncate font-semibold">${esc(d.topic || d.title)}</div>
+        <div class="text-small text-muted">${esc(gradeLabel(d.grade))}, ${esc(d.duration_min)} min</div>
+      </div>
+      <span class="self-start text-small text-muted">${fmtWhen(d.created_at)}</span>
     </div>
-    <span class="text-small text-muted">${fmtWhen(d.created_at)}</span>
+    <div class="flex gap-1 border-t border-line px-2 py-1">
+      <button type="button" class="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg text-small font-medium text-fg" data-act="copy">${ICONS.copy}Copy</button>
+      <button type="button" class="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg text-small font-medium text-fg" data-act="share">${ICONS.share}Share</button>
+      <button type="button" class="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg text-small font-medium text-fg" data-act="quiz">${ICONS.list}Make a quiz</button>
+    </div>
   </li>`;
+}
+
+// A simple open notebook: ruled pages, the red margin line, a pencil.
+const EMPTY_ART = `<svg viewBox="0 0 120 80" class="h-24 w-36" aria-hidden="true" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M60 18C48 12 30 11 14 14v52c16-3 34-2 46 4z" class="fill-paper stroke-line" stroke-width="1.5"/>
+  <path d="M60 18c12-6 30-7 46-4v52c-16-3-34-2-46 4z" class="fill-paper stroke-line" stroke-width="1.5"/>
+  <path d="M26 30h28M26 38h28M26 46h28M26 54h20M66 30h30M66 38h30M66 46h22" class="stroke-rule" stroke-width="1.5"/>
+  <path d="M22 20v42" class="stroke-redline" stroke-width="1.5"/>
+  <g transform="rotate(-35 92 52)">
+    <rect x="74" y="49" width="30" height="7" rx="1.5" class="fill-accent"/>
+    <path d="M104 49l7 3.5-7 3.5z" class="fill-paper stroke-line" stroke-width="1"/>
+  </g>
+</svg>`;
+
+function emptyHtml() {
+  const cards = EXAMPLES.map((ex, i) => {
+    const s = SUBJECTS[ex.subject];
+    return `<li><button type="button" class="card card-soft flex w-full items-center gap-3 text-left" data-example="${i}">
+      ${subjectTile({ subject: ex.subject })}
+      <span class="min-w-0 flex-1">
+        <span class="block font-semibold">${esc(ex.topic)}</span>
+        <span class="block text-small text-muted">${esc(s.label)}, ${esc(gradeLabel(ex.grade))}, ${ex.duration} min</span>
+      </span>
+    </button></li>`;
+  }).join('');
+  return `<div class="flex flex-col items-center gap-2 px-4 pb-4 pt-2 text-center" id="l-empty">
+      ${EMPTY_ART}
+      <p class="font-display text-heading font-semibold">Start your first lesson plan in 1&nbsp;minute</p>
+      <p class="text-small text-muted">Tap an example to fill in the form, or type your own topic above.</p>
+    </div>
+    <ul class="flex flex-col gap-3" aria-label="Examples">${cards}</ul>`;
+}
+
+function useExample(view, i) {
+  const ex = EXAMPLES[i];
+  if (!ex) return;
+  prefs.subject = ex.subject;
+  prefs.grade = ex.grade;
+  localStorage.setItem('tm.subject', prefs.subject);
+  localStorage.setItem('tm.grade', prefs.grade);
+  duration = ex.duration;
+  topic = ex.topic;
+  const form = view.querySelector('#l-form');
+  form.outerHTML = formHtml();
+  bindForm(view);
+  view.querySelector('#l-form').scrollIntoView({ block: 'start', behavior: 'smooth' });
+  toast('Example filled in');
+}
+
+// Full plans for Copy and Share, fetched after the cards render so the
+// clipboard and share sheet can run inside the tap itself.
+const fullDocs = new Map();
+function loadFull(id) {
+  if (!fullDocs.has(id)) {
+    const p = api(`/api/documents/${id}`);
+    p.catch(() => fullDocs.delete(id));
+    fullDocs.set(id, p);
+  }
+  return fullDocs.get(id);
+}
+
+async function copyPlan(id) {
+  const text = loadFull(id).then(lessonText);
+  try {
+    // Safari keeps the tap's permission only if the clipboard write starts now.
+    if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+      await navigator.clipboard.write([new ClipboardItem({ 'text/plain': text.then(t => new Blob([t], { type: 'text/plain' })) })]);
+    } else {
+      await navigator.clipboard.writeText(await text);
+    }
+    toast('Lesson plan copied');
+  } catch {
+    toast("Couldn't copy the lesson plan. Try again.");
+  }
+}
+
+async function sharePlan(id) {
+  let doc;
+  try { doc = await loadFull(id); } catch { toast("Couldn't load that lesson plan. Try again."); return; }
+  const text = lessonText(doc);
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: doc.title, text });
+      return;
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
+    }
+  }
+  // No share sheet here: copy it instead, so it can be pasted anywhere.
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('Copied. Paste it wherever you want to share it.');
+  } catch {
+    toast("Couldn't share the lesson plan. Try Copy.");
+  }
 }
 
 async function lessonsScreen(view) {
@@ -126,8 +234,8 @@ function renderList(view, docs) {
           <span class="text-small text-muted">${count} plan${count === 1 ? '' : 's'}</span>
         </div>
         <input class="field mb-2" id="l-search" placeholder="Search your lesson plans" autocomplete="off" value="${esc(view.dataset.q || '')}">
-        <ul class="list" id="l-list">${rows}</ul>`
-      : stateEmpty('No lesson plans yet', 'Pick a subject and a topic above, then write your first one.');
+        <ul class="flex flex-col gap-3" id="l-list">${rows || '<li class="px-1 py-4 text-center text-small text-muted">No lesson plans match your search.</li>'}</ul>`
+      : emptyHtml();
     const search = lower.querySelector('#l-search');
     if (search) {
       search.addEventListener('input', () => {
@@ -140,13 +248,23 @@ function renderList(view, docs) {
       });
     }
     attachSwipe(lower);
-    lower.addEventListener('click', e => {
-      const row = e.target.closest('.list-row');
-      if (row) navigate(`#/lessons/${row.dataset.id}`);
-    });
+    lower.querySelectorAll('#l-list [data-id]').forEach(card => loadFull(Number(card.dataset.id)));
+    lower.onclick = e => {
+      const example = e.target.closest('[data-example]');
+      if (example) return useExample(view, Number(example.dataset.example));
+      const card = e.target.closest('#l-list [data-id]');
+      if (!card) return;
+      const id = Number(card.dataset.id);
+      const act = e.target.closest('[data-act]');
+      if (!act) return navigate(`#/lessons/${id}`);
+      if (act.dataset.act === 'copy') copyPlan(id);
+      if (act.dataset.act === 'share') sharePlan(id);
+      if (act.dataset.act === 'quiz') navigate(`#/quizzes?from=${id}`);
+    };
   };
   view.dataset.count = String(docs.length);
   applyFilter.docs = docs;
+  fullDocs.clear();
   applyFilter.show = show;
   applyFilter(docs);
 }
@@ -155,13 +273,13 @@ function applyFilter(docs) {
   const scope = document.getElementById('view');
   const q = (scope.dataset.q || '').toLowerCase();
   const rows = docs.filter(d =>
-    !q || [d.title, d.topic, subjectLabel(d)].join(' ').toLowerCase().includes(q)).map(rowHtml).join('');
+    !q || [d.title, d.topic, subjectLabel(d)].join(' ').toLowerCase().includes(q)).map(cardHtml).join('');
   applyFilter.show(rows, docs.length);
 }
 
 function attachSwipe(lower) {
   if (!window.unNative || !unNative.attachSwipeActions) return;
-  lower.querySelectorAll('#l-list .list-row').forEach(row => {
+  lower.querySelectorAll('#l-list [data-id]').forEach(row => {
     const id = Number(row.dataset.id);
     unNative.attachSwipeActions(row, {
       actions: [{
