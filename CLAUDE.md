@@ -114,7 +114,9 @@ changes the look on purpose.
   used only for the primary button and the selected tab. Red (`mark`) is the
   teacher's red pen: margin minutes, ticks and crosses, "Check this", circled
   answers on the answer key. Subject folder colours: math blue, English red,
-  science green, social studies orange, arts purple, other grey (`subj-*`).
+  science green, social studies orange, arts purple, national language teal,
+  civics indigo, religion brown, local language pink, other olive (`subj-*`);
+  no subject is grey.
   The notebook sheet has its own paper/rule/redline tokens. Full table in the
   spec of the first build; values live in `styles/tailwind-input.css`.
 - **Signature element:** the notebook sheet. Every lesson plan and quiz is

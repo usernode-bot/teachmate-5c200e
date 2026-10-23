@@ -39,7 +39,11 @@
     --subj-sci: 22 128 61;    /* Science, green folder */
     --subj-soc: 194 90 12;    /* Social studies, orange folder */
     --subj-art: 126 58 196;   /* Arts, purple folder */
-    --subj-other: 100 100 110; /* Other subjects, grey folder */
+    --subj-nat: 13 122 112;   /* National language, teal folder */
+    --subj-civ: 79 70 229;    /* Civics, indigo folder */
+    --subj-rel: 146 84 36;    /* Religion, brown folder */
+    --subj-loc: 190 24 93;    /* Local language, pink folder */
+    --subj-other: 98 110 20;  /* Other subjects, olive folder */
   }
   .dark {
     --ground: 22 22 21;
@@ -64,7 +68,11 @@
     --subj-sci: 74 222 128;
     --subj-soc: 251 146 60;
     --subj-art: 192 132 252;
-    --subj-other: 161 161 170;
+    --subj-nat: 45 212 191;
+    --subj-civ: 165 160 255;
+    --subj-rel: 214 162 112;
+    --subj-loc: 244 114 182;
+    --subj-other: 190 204 90;
   }
   /* el.hidden = true hides an element even when a class gives it a display. */
   [hidden]:where(:not([hidden="until-found"])) {
@@ -156,6 +164,33 @@
     box-shadow: inset 0 0 0 1px rgb(var(--c));
     background: rgb(var(--c) / 0.08);
     @apply font-semibold;
+  }
+
+  /* The subject chips as one row that scrolls sideways, bleeding to the
+     card's edges so a cut-off chip shows there is more. */
+  .chip-row {
+    @apply -mx-4 flex gap-2 overflow-x-auto px-4 pb-1;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+  .chip-row::-webkit-scrollbar {
+    display: none;
+  }
+  .chip-row .chip {
+    flex: none;
+  }
+
+  /* A form step's number, before its label. */
+  .step-n {
+    @apply mr-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-raised text-small font-semibold text-fg;
+  }
+
+  /* A form's primary action, held at the bottom of the screen while the form
+     is on it, clear of the phone's navigation bar. */
+  .form-foot {
+    @apply sticky z-10 -mx-4 -mb-4 mt-3 rounded-b-xl border-t border-line bg-surface px-4 pt-3;
+    bottom: 0;
+    padding-bottom: calc(0.75rem + var(--un-safe-inset-bottom, env(safe-area-inset-bottom, 0px)));
   }
 
   /* A stepper: minus, value, plus. */
@@ -347,6 +382,10 @@
 .s-sci { --c: var(--subj-sci); }
 .s-soc { --c: var(--subj-soc); }
 .s-art { --c: var(--subj-art); }
+.s-nat { --c: var(--subj-nat); }
+.s-civ { --c: var(--subj-civ); }
+.s-rel { --c: var(--subj-rel); }
+.s-loc { --c: var(--subj-loc); }
 .s-other { --c: var(--subj-other); }
 
 /* Printed PDFs are always the clean light sheet: no app buttons, no tabs. */
@@ -374,7 +413,11 @@
     --subj-sci: 22 128 61;
     --subj-soc: 194 90 12;
     --subj-art: 126 58 196;
-    --subj-other: 100 100 110;
+    --subj-nat: 13 122 112;
+    --subj-civ: 79 70 229;
+    --subj-rel: 146 84 36;
+    --subj-loc: 190 24 93;
+    --subj-other: 98 110 20;
   }
   body {
     background: rgb(var(--paper)) !important;

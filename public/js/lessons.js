@@ -17,6 +17,8 @@ const prefs = {
 };
 let duration = 45;
 let topic = '';
+// Step 3 stays open once a topic has been typed, even if the topic is edited.
+let detailsShown = false;
 // The optional classroom context, remembered while the app is open.
 let studentCount = '';
 let tools = null;
@@ -35,11 +37,22 @@ const chipsHtml = () => Object.entries(SUBJECTS).map(([k, s]) =>
 function formHtml() {
   const gradeOptions = ['K', ...Array.from({ length: 12 }, (_, i) => String(i + 1))]
     .map(g => `<option value="${g}" ${prefs.grade === g ? 'selected' : ''}>${g === 'K' ? 'Kindergarten' : 'Grade ' + g}</option>`).join('');
+  // The form is three steps, each shown once the one before it is filled:
+  // the subject, then the topic, then grade, length and the rest.
+  const showTopic = !!prefs.subject;
+  if (topic.trim()) detailsShown = true;
+  const showDetails = showTopic && detailsShown;
   return `<section class="card mx-4 mt-3" data-noprint>
     <h2 class="mb-3 font-display text-heading font-semibold">New lesson plan</h2>
-    <label class="section-label" for="l-subject-chips">Subject</label>
-    <div class="mb-3 flex flex-wrap gap-2" id="l-subject-chips">${chipsHtml()}</div>
+    <label class="section-label block" for="l-subject-chips"><span class="step-n">1</span>Subject</label>
+    <div class="chip-row mb-3" id="l-subject-chips">${chipsHtml()}</div>
     ${prefs.subject === 'other' ? `<input class="field mb-3" id="l-subject-name" placeholder="e.g. Spanish" maxlength="40">` : ''}
+    <div id="l-step-topic" ${showTopic ? '' : 'hidden'}>
+      <label class="section-label block" for="l-topic"><span class="step-n">2</span>Topic</label>
+      <input class="field mb-3" id="l-topic" placeholder="e.g. Fractions on a number line" maxlength="120" value="${esc(topic)}">
+    </div>
+    <div id="l-step-details" ${showDetails ? '' : 'hidden'}>
+    <span class="section-label block"><span class="step-n">3</span>Grade and class length</span>
     <div class="mb-3 grid grid-cols-2 gap-3">
       <div>
         <label class="section-label" for="l-grade">Grade</label>
@@ -61,8 +74,6 @@ function formHtml() {
     </div>
     ${prefs.curriculum === 'other' ? `<label class="section-label" for="l-curriculum-name">Curriculum name</label>
     <input class="field mb-3" id="l-curriculum-name" placeholder="e.g. National Curriculum for England" maxlength="60">` : ''}
-    <label class="section-label" for="l-topic">Topic</label>
-    <input class="field mb-3" id="l-topic" placeholder="e.g. Fractions on a number line" maxlength="120" value="${esc(topic)}">
     <button type="button" id="l-ctx-toggle" class="flex min-h-11 w-full items-center justify-between px-1 text-left font-medium text-fg" aria-expanded="${contextOpen || contextHasValues()}" aria-controls="l-ctx">
       <span>Classroom context <span class="text-small font-normal text-muted">Optional</span></span>
       <span class="${contextOpen || contextHasValues() ? 'rotate-180' : ''}" id="l-ctx-chev">${ICONS.chevron}</span>
@@ -82,9 +93,12 @@ function formHtml() {
         </span>
       </label>
     </div>
-    <button id="l-write" class="btn-primary w-full">Write lesson plan</button>
-    <p id="l-progress" class="mt-2 hidden text-center text-small text-muted">Writing your lesson plan…</p>
-    <div id="l-error" class="mt-2" hidden></div>
+    </div>
+    <div class="form-foot">
+      <div id="l-error" class="mb-2" hidden></div>
+      <button id="l-write" class="btn-primary w-full">Write lesson plan</button>
+      <p id="l-progress" class="mt-2 hidden text-center text-small text-muted">Writing your lesson plan…</p>
+    </div>
   </section>`;
 }
 
@@ -181,12 +195,23 @@ function attachSwipe(lower) {
 function bindForm(view) {
   const chips = view.querySelector('#l-subject-chips');
   if (!chips) return;
+  // Keep the chosen subject in sight in the sideways row.
+  const on = chips.querySelector('.is-on');
+  if (on) {
+    const row = chips.getBoundingClientRect();
+    const r = on.getBoundingClientRect();
+    if (r.right > row.right) chips.scrollLeft += r.left - row.left - 16;
+  }
   chips.addEventListener('click', e => {
     const chip = e.target.closest('[data-subject]');
     if (!chip) return;
+    const scrollLeft = chips.scrollLeft;
     prefs.subject = chip.dataset.subject;
     localStorage.setItem('tm.subject', prefs.subject);
     lessonsScreen(view);
+    // The re-render draws the form at once; keep the row where it was.
+    const again = view.querySelector('#l-subject-chips');
+    if (again) again.scrollLeft = scrollLeft;
   });
   const grade = view.querySelector('#l-grade');
   grade.value = prefs.grade;
@@ -207,7 +232,13 @@ function bindForm(view) {
     duration = Math.min(120, Math.max(15, duration + Number(b.dataset.d) * 5));
     stepper.querySelector('output').textContent = `${duration} min`;
   });
-  view.querySelector('#l-topic').addEventListener('input', e => { topic = e.target.value; });
+  view.querySelector('#l-topic').addEventListener('input', e => {
+    topic = e.target.value;
+    if (!detailsShown && topic.trim()) {
+      detailsShown = true;
+      view.querySelector('#l-step-details').hidden = false;
+    }
+  });
   const ctxToggle = view.querySelector('#l-ctx-toggle');
   ctxToggle.addEventListener('click', () => {
     contextOpen = !contextOpen;
