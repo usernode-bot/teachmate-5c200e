@@ -120,10 +120,18 @@
   .card {
     @apply rounded-xl border border-line bg-surface p-4;
   }
+  /* A card lifted off the page with a soft shadow: the lesson form and the
+     saved plan cards. */
+  .card-soft {
+    @apply shadow-md shadow-fg/5;
+  }
+  .dark .card-soft {
+    @apply shadow-ground;
+  }
 
   /* The label above a section: sentence case, never uppercase or tracked. */
   .section-label {
-    @apply mb-2 px-1 text-small font-medium text-muted;
+    @apply mb-2 px-1 text-small font-semibold text-fg;
   }
 
   /* States of anything that loads data. */
