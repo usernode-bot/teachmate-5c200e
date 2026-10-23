@@ -56,6 +56,33 @@ export function lessonSheetHtml(doc) {
   </article>`;
 }
 
+// The same lesson as plain text, for Copy and Share on the saved plan cards.
+export function lessonText(doc) {
+  const b = doc.body || {};
+  const out = [doc.title, `${gradeLabel(doc.grade)} ${subjectLabel(doc).toLowerCase()}, ${b.durationMin} minutes`];
+  const cur = curriculumLabel(doc);
+  if (cur) out[1] += `, ${cur}`;
+  const clean = items => (items || []).filter(s => String(s).trim());
+  const section = (title, items, ordered = false) => {
+    const rows = clean(items);
+    if (!rows.length) return;
+    out.push('', title, ...rows.map((s, i) => (ordered ? `${i + 1}. ` : '- ') + s));
+  };
+  section('Learning objectives', b.objectives);
+  section('Curriculum standards', b.standards);
+  section('Materials', b.materials);
+  const ranges = timeRanges(b.activities || []);
+  (b.activities || []).forEach((a, i) => {
+    if (!a) return;
+    section(`${a.title} (${ranges[i]} min)`, a.steps, true);
+    (a.tracks || []).forEach(t => section(`${TRACK_NAMES[t.level] || t.level}: ${t.title}`, t.steps, true));
+  });
+  section('Assessment', b.assessment && b.assessment.checks);
+  const aligned = b.assessment && String(b.assessment.aligned || '').trim();
+  if (aligned) out.push('', `Aligned assessment: ${aligned}`);
+  return out.join('\n');
+}
+
 // The correct choice is circled in red pen on the answer key.
 function choice(q, i, key) {
   const circled = key && i === q.answer;
